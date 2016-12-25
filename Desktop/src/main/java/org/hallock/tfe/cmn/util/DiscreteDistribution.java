@@ -14,8 +14,12 @@ public class DiscreteDistribution
 		
 	}
 	
+	public DiscreteDistribution()
+	{
+	}
+
 	public int sample()
 	{
-		return 2;
+		return 1;
 	}
 }

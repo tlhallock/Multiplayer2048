@@ -4,17 +4,17 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.hallock.tfe.cmn.game.TileBoard;
-import org.hallock.tfe.dsktp.gui.StateView;
+import org.hallock.tfe.dsktp.gui.TileView;
 
 public class GameClient
 {
 	ClientConnection connection;
 
-	Map<Integer, StateView> views = new TreeMap<Integer, StateView>();
+	Map<Integer, TileView> views = new TreeMap<Integer, TileView>();
 	
-	void updatePlayer(int playerNum, TileBoard newState)
+	public void updatePlayer(int playerNum, TileBoard newState)
 	{
-		StateView stateView = views.get(playerNum);
+		TileView stateView = views.get(playerNum);
 		if (stateView == null)
 		{
 			System.out.println("Player unknown");
@@ -23,5 +23,10 @@ public class GameClient
 		{
 			stateView.setTileBoard(newState);
 		}
+	}
+
+	public void add(TileView myself)
+	{
+		views.put(views.size(), myself);
 	}
 }

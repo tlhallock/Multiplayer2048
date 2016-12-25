@@ -1,6 +1,8 @@
 package org.hallock.tfe.cmn.game;
+
 import java.awt.Point;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -27,6 +29,33 @@ public class TileBoard
 		for (int i = 0; i < tiles.length; i++)
 			for (int j = 0; j < tiles[i].length; j++)
 				tiles[i][j] = state.tiles[i][j];
+	}
+
+	public TileBoard(Scanner scanner)
+	{
+		int rows = scanner.nextInt();
+		int cols = scanner.nextInt();
+		tiles = new int[rows][cols];
+		for (int i = 0; i < rows; i++)
+		{
+			for (int j = 0; j < cols; j++)
+			{
+				tiles[i][j] = scanner.nextInt();
+			}
+		}
+	}
+
+	public void print(PrintWriter writer)
+	{
+		writer.print(tiles.length + " ");
+		writer.print(tiles[0].length + " ");
+		for (int i = 0; i < tiles.length; i++)
+		{
+			for (int j = 0; j < tiles[0].length; j++)
+			{
+				writer.print(tiles[i][j] + " ");
+			}
+		}
 	}
 
 	public boolean isFinished()
@@ -61,19 +90,17 @@ public class TileBoard
 					possibles.add(new Point(i, j));
 		return possibles;
 	}
-	
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder(tiles.length
-				* (1 + (Constants.DISPLAY_WIDTH + 1) * tiles[0].length));
 
-		for (int i = 0; i < tiles.length; i++) {
-			for (int j = 0; j < tiles[i].length; j++) {
-					builder.append(
-							Utils.ensureLength(
-									Utils.display(tiles[i][j]),
-									' ', Constants.DISPLAY_WIDTH)
-							).append(' ');
+	@Override
+	public String toString()
+	{
+		StringBuilder builder = new StringBuilder(tiles.length * (1 + (Constants.DISPLAY_WIDTH + 1) * tiles[0].length));
+
+		for (int i = 0; i < tiles.length; i++)
+		{
+			for (int j = 0; j < tiles[i].length; j++)
+			{
+				builder.append(Utils.ensureLength(Utils.display(tiles[i][j]), ' ', Constants.DISPLAY_WIDTH)).append(' ');
 			}
 			builder.append('\n');
 		}
@@ -81,10 +108,6 @@ public class TileBoard
 		return builder.toString();
 	}
 
-	
-	
-	
-	
 	private boolean pushRow(int r, int to, int from)
 	{
 		if (to == from)

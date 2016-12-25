@@ -9,7 +9,7 @@ import javax.swing.JPanel;
 import org.hallock.tfe.cmn.game.TileBoard;
 import org.hallock.tfe.cmn.util.Utils;
 
-public class StateView extends JPanel {
+public class TileView extends JPanel {
 	private TileBoard state;
 	int dividerSize = 5;
 

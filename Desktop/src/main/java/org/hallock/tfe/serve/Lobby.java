@@ -8,6 +8,6 @@ import org.hallock.tfe.cmn.game.GameOptions;
 public class Lobby
 {
 	GameOptions options;
-	LinkedList<PlayerConnection> connectedPlayers;
-	PlayerConnection host;
+	LinkedList<Player> connectedPlayers;
+	Player host;
 }

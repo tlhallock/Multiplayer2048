@@ -6,18 +6,18 @@ import java.math.BigDecimal;
 
 import org.hallock.tfe.cmn.game.History;
 import org.hallock.tfe.cmn.game.TileBoard;
-import org.hallock.tfe.dsktp.gui.StateView;
+import org.hallock.tfe.dsktp.gui.TileView;
 
 public class SimpleGuiGame implements KeyListener
 {
-	StateView view;
+	TileView view;
 	TileBoard state;
 
 	int numToFill = 1;
 	History history = new History();
 	BigDecimal turns = BigDecimal.ZERO;
 
-	public SimpleGuiGame(StateView view2, TileBoard tb)
+	public SimpleGuiGame(TileView view2, TileBoard tb)
 	{
 		this.view = view2;
 		this.state = tb;
