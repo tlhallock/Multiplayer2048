@@ -1,4 +1,4 @@
-package org.hallock.tf.serve;
+package org.hallock.tfe.serve;
 
 public class GameServer
 {
