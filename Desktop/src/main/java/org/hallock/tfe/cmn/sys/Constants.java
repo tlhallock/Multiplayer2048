@@ -8,4 +8,5 @@ public class Constants {
 	public static final boolean DISPLAY_ZEROS = false;
 	public static final int DISPLAY_WIDTH = 12;
 
+	public static final int TEMP_PORT = 8088;
 }

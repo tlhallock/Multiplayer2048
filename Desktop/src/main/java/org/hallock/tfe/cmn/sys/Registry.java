@@ -1,5 +1,8 @@
 package org.hallock.tfe.cmn.sys;
 
-public class Registry {
+public class Registry
+{
+	
+	
 
 }

@@ -1,6 +1,7 @@
 package org.hallock.tfe.cmn.util;
 
 import java.awt.Color;
+import java.awt.Container;
 
 import org.hallock.tfe.cmn.sys.Constants;
 
@@ -15,6 +16,13 @@ public class Utils {
 		return builder.toString();
 	}
 	
+	public static void attach(Container parent, Container child)
+	{
+		javax.swing.GroupLayout layout = new javax.swing.GroupLayout(parent);
+		parent.setLayout(layout);
+		layout.setHorizontalGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING).addGroup(layout.createSequentialGroup().addContainerGap().addComponent(child, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE).addContainerGap()));
+		layout.setVerticalGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING).addGroup(layout.createSequentialGroup().addContainerGap().addComponent(child, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE).addContainerGap()));
+	}
 	
 	
 	

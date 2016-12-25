@@ -8,7 +8,8 @@ import org.hallock.tfe.cmn.game.History;
 import org.hallock.tfe.cmn.game.TileBoard;
 import org.hallock.tfe.dsktp.gui.StateView;
 
-public class SimpleGuiGame implements KeyListener {
+public class SimpleGuiGame implements KeyListener
+{
 	StateView view;
 	TileBoard state;
 
@@ -16,15 +17,18 @@ public class SimpleGuiGame implements KeyListener {
 	History history = new History();
 	BigDecimal turns = BigDecimal.ZERO;
 
-	public SimpleGuiGame(StateView view2, TileBoard tb) {
+	public SimpleGuiGame(StateView view2, TileBoard tb)
+	{
 		this.view = view2;
 		this.state = tb;
 	}
 
 	@Override
-	public void keyPressed(KeyEvent arg0) {
+	public void keyPressed(KeyEvent arg0)
+	{
 		System.out.println("Here");
-		switch (arg0.getKeyCode()) {
+		switch (arg0.getKeyCode())
+		{
 		case KeyEvent.VK_LEFT:
 			if (state.left())
 				state.randomlyFill(numToFill);
@@ -60,7 +64,8 @@ public class SimpleGuiGame implements KeyListener {
 			view.setTileBoard(state);
 			System.out.println("# turns = " + turns);
 			break;
-		case KeyEvent.VK_R: {
+		case KeyEvent.VK_R:
+		{
 			TileBoard newState = history.redo();
 			if (newState == null)
 				break;
@@ -69,7 +74,8 @@ public class SimpleGuiGame implements KeyListener {
 		}
 			break;
 
-		case KeyEvent.VK_Z: {
+		case KeyEvent.VK_Z:
+		{
 			TileBoard newState = history.undo();
 			if (newState == null)
 				break;
@@ -85,10 +91,12 @@ public class SimpleGuiGame implements KeyListener {
 	}
 
 	@Override
-	public void keyReleased(KeyEvent arg0) {
+	public void keyReleased(KeyEvent arg0)
+	{
 	}
 
 	@Override
-	public void keyTyped(KeyEvent arg0) {
+	public void keyTyped(KeyEvent arg0)
+	{
 	}
 }
