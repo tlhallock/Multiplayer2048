@@ -1,7 +1,6 @@
 package org.hallock.tfe.cmn.game;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.LinkedList;
 
 
