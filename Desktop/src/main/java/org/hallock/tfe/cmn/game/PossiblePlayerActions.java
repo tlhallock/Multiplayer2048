@@ -10,4 +10,11 @@ public enum PossiblePlayerActions
 	Undo, 
 	Quit, 
 	ShowAllTileBoards,
+	
+	
+	
+	
+	
+	
+	
 }

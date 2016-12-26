@@ -2,15 +2,17 @@ package org.hallock.tfe.client;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.IOException;
 
 import org.hallock.tfe.cmn.game.PossiblePlayerActions;
-import org.hallock.tfe.msg.PlayerAction;
+import org.hallock.tfe.cmn.util.Connection;
+import org.hallock.tfe.msg.GSPlayerAction;
 
 public class ClientKeyListener implements KeyListener
 {
-	private ClientConnection connection;
+	private Connection connection;
 
-	ClientKeyListener(ClientConnection connection)
+	ClientKeyListener(Connection connection)
 	{
 		this.connection = connection;
 	}
@@ -21,26 +23,75 @@ public class ClientKeyListener implements KeyListener
 		switch (arg0.getKeyCode())
 		{
 		case KeyEvent.VK_LEFT:
-			connection.sendMessage(new PlayerAction(PossiblePlayerActions.Left));
+			try
+			{
+				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Left));
+			}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+			}
 			break;
 		case KeyEvent.VK_RIGHT:
-			connection.sendMessage(new PlayerAction(PossiblePlayerActions.Right));
+			try
+			{
+				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Right));
+			}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+			}
 			break;
 		case KeyEvent.VK_UP:
-			connection.sendMessage(new PlayerAction(PossiblePlayerActions.Up));
+			try
+			{
+				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Up));
+			}
+			catch (IOException e4)
+			{
+				e4.printStackTrace();
+			}
 			break;
 		case KeyEvent.VK_DOWN:
-			connection.sendMessage(new PlayerAction(PossiblePlayerActions.Down));
+			try
+			{
+				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Down));
+			}
+			catch (IOException e3)
+			{
+				e3.printStackTrace();
+			}
 			break;
 		case KeyEvent.VK_R:
-			connection.sendMessage(new PlayerAction(PossiblePlayerActions.Redo));
+			try
+			{
+				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Redo));
+			}
+			catch (IOException e2)
+			{
+				e2.printStackTrace();
+			}
 			break;
 		case KeyEvent.VK_Z:
-			connection.sendMessage(new PlayerAction(PossiblePlayerActions.Undo));
+			try
+			{
+				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Undo));
+			}
+			catch (IOException e1)
+			{
+				e1.printStackTrace();
+			}
 			break;
 		case KeyEvent.VK_ESCAPE:
 		case KeyEvent.VK_Q:
-			connection.sendMessage(new PlayerAction(PossiblePlayerActions.Quit));
+			try
+			{
+				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Quit));
+			}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+			}
 			break;
 		}
 	}

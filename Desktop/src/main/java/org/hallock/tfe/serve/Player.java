@@ -1,16 +1,12 @@
 package org.hallock.tfe.serve;
 
-import java.io.PrintWriter;
-import java.util.Scanner;
-
 import org.hallock.tfe.cmn.game.History;
 import org.hallock.tfe.cmn.game.TileBoard;
-import org.hallock.tfe.msg.Message;
+import org.hallock.tfe.cmn.util.Connection;
 
 public class Player
 {
-	private PrintWriter output;
-	private Scanner input;
+	Connection connection;
 
 	private GameServer server;
 	int playerNum;
@@ -19,22 +15,19 @@ public class Player
 	History history;
 
 	public Player(
+			Connection connection,
 			int playerNum,
-			GameServer server,
-			PrintWriter writer,
-			Scanner scanner)
+			GameServer server)
 	{
+		this.connection = connection;
 		this.playerNum = playerNum;
 		this.server = server;
-		this.output = writer;
-		this.input = scanner;
 	}
 
-	public void send(Message gameStateChanged)
-	{
-		gameStateChanged.write(output);
-		output.flush();
-	}
+//	public void send(Message gameStateChanged) throws IOException
+//	{
+//		connection.sendMessageAndFlush(gameStateChanged);
+//	}
 
 	public void quit()
 	{

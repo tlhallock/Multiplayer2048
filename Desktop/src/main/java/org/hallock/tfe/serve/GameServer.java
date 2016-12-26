@@ -1,20 +1,23 @@
 package org.hallock.tfe.serve;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Scanner;
 
 import org.hallock.tfe.cmn.game.GameOptions;
 import org.hallock.tfe.cmn.game.History;
 import org.hallock.tfe.cmn.game.PossiblePlayerActions;
 import org.hallock.tfe.cmn.game.TileBoard;
 import org.hallock.tfe.cmn.sys.Constants;
-import org.hallock.tfe.msg.GameStateChanged;
+import org.hallock.tfe.cmn.util.Connection;
+import org.hallock.tfe.cmn.util.Json;
+import org.hallock.tfe.msg.GCGameStateChanged;
+import org.hallock.tfe.msg.GSServerMessage;
 import org.hallock.tfe.msg.Message;
-import org.hallock.tfe.msg.ServerMessage;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
 
 public class GameServer
 {
@@ -27,7 +30,7 @@ public class GameServer
 		this.options = options;
 	}
 
-	private void add(Player player)
+	private synchronized void add(Player player) throws IOException
 	{
 		connections.add(player);
 		// bad place for this?
@@ -40,7 +43,7 @@ public class GameServer
 	
 	
 	
-	private void broadCast()
+	private synchronized void broadCast() throws IOException
 	{
 		for (Player c : connections)
 		{
@@ -48,15 +51,17 @@ public class GameServer
 		}
 	}
 
-	private void broadCast(Player player)
+	private synchronized void broadCast(Player player) throws IOException
 	{
 		for (Player c : connections)
 		{
-			player.send(new GameStateChanged(c.playerNum, c.board));
+			player.connection.sendMessageWithoutFlushing(
+					new GCGameStateChanged(c.playerNum, c.board));
 		}
+		player.connection.flush();
 	}
 
-	public void play(int player, PossiblePlayerActions swipe)
+	public void play(int player, PossiblePlayerActions swipe) throws IOException
 	{
 		boolean changed = false;
 		TileBoard state = connections.get(player).board;
@@ -77,6 +82,7 @@ public class GameServer
 			state.randomlyFill(options.numberOfNewTilesPerTurn);
 			history.updated(state, "");
 			changed = true;
+			break;
 		case Left:
 			if (!state.left())
 				break;
@@ -111,11 +117,12 @@ public class GameServer
 		}
 		case Quit:
 			connections.get(player).quit();
-			System.out.println("Ignoring quit");
 			break;
+			
 		case ShowAllTileBoards:
 			broadCast(connections.get(player));
 			break;
+			
 		default:
 			System.out.println("Unknown action: " + swipe);
 		}
@@ -148,10 +155,9 @@ public class GameServer
 	
 	
 	
-	
-	public static void main(String[] args) throws IOException, InterruptedException
+	public static void launchServer() throws InterruptedException, IOException
 	{
-		try (ServerSocket socket = new ServerSocket(Constants.TEMP_PORT);)
+		try (ServerSocket serverSocket = new ServerSocket(Constants.TEMP_PORT);)
 		{
 			int numPlayers = 2;
 			final GameServer server = new GameServer(numPlayers, new GameOptions());
@@ -166,26 +172,27 @@ public class GameServer
 					public void run()
 					{
 						System.out.println("Waiting for player " + playerNum);
-						try (Socket accept = socket.accept();
-								PrintWriter writer = new PrintWriter(accept.getOutputStream());
-								Scanner scanner = new Scanner(accept.getInputStream());)
+						try (Socket accept = serverSocket.accept();
+							JsonGenerator generator = Json.createOpenedGenerator(accept.getOutputStream());
+							JsonParser parser = Json.createParser(accept.getInputStream());)
 						{
-							
 							System.out.println("Opened connection " + playerNum);
-							Player player = new Player(playerNum, server, writer, scanner);
+							Connection connection = new Connection(accept, generator, parser);
+							connection.readOpen();
+							
+							Player player = new Player(connection, playerNum, server);
 							server.add(player);
 
-							while (scanner.hasNext())
+							Message message;
+							while ((message = connection.readMessage()) != null)
 							{
-								Message parse = Message.parse(scanner);
-								if (!(parse instanceof ServerMessage))
+								if (!(message instanceof GSServerMessage))
 								{
-									System.out.println("ignoring " + parse);
+									System.out.println("ignoring " + message);
 								}
-								ServerMessage msg = (ServerMessage) parse;
+								GSServerMessage msg = (GSServerMessage) message;
 								msg.perform(playerNum, server);
 							}
-						
 						}
 						catch (IOException e)
 						{

@@ -18,6 +18,9 @@ public class DiscreteDistribution
 	{
 	}
 
+    public DiscreteDistribution(DiscreteDistribution newTileDistribution) {
+    }
+
 	public int sample()
 	{
 		return 1;

@@ -33,8 +33,8 @@ public class SinglePanelFrame extends JFrame
 		SinglePanelFrame frame = new SinglePanelFrame(panel);
 		frame.setTitle(title);
 		frame.setBounds(location);
-		frame.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        frame.setVisible(true);
-        return frame;
+		frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
+		frame.setVisible(true);
+		return frame;
 	}
 }

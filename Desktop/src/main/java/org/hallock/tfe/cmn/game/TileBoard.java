@@ -2,7 +2,6 @@ package org.hallock.tfe.cmn.game;
 
 import java.awt.Point;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -11,6 +10,10 @@ import java.util.Scanner;
 
 import org.hallock.tfe.cmn.sys.Constants;
 import org.hallock.tfe.cmn.util.Utils;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 
 public class TileBoard
 {
@@ -31,31 +34,81 @@ public class TileBoard
 				tiles[i][j] = state.tiles[i][j];
 	}
 
-	public TileBoard(Scanner scanner)
+	public TileBoard(JsonParser parser) throws IOException
 	{
-		int rows = scanner.nextInt();
-		int cols = scanner.nextInt();
-		tiles = new int[rows][cols];
-		for (int i = 0; i < rows; i++)
+		int rows = -1;
+		int cols = -1;
+
+		JsonToken next;
+		while (!(next = parser.nextToken()).equals(JsonToken.END_OBJECT))
 		{
-			for (int j = 0; j < cols; j++)
+			if (!next.equals(JsonToken.FIELD_NAME))
+				throw new RuntimeException("Unexpected.");
+
+			String currentName = parser.getCurrentName();
+			switch (next = parser.nextToken())
 			{
-				tiles[i][j] = scanner.nextInt();
+			case VALUE_NUMBER_INT:
+				switch (currentName)
+				{
+				case "cols":
+					rows = parser.getNumberValue().intValue();
+					break;
+				case "rows":
+					cols = parser.getNumberValue().intValue();
+					break;
+				default:
+					throw new RuntimeException("Unexpected.");
+				}
+				break;
+			case START_ARRAY:
+				switch (currentName)
+				{
+				case "vals":
+					tiles = new int[rows][cols];
+					tiles = new int[rows][cols];
+					for (int i = 0; i < rows; i++)
+					{
+						for (int j = 0; j < cols; j++)
+						{
+							if (!parser.nextToken().equals(JsonToken.VALUE_NUMBER_INT))
+								throw new RuntimeException("Unexpected.");
+							tiles[i][j] = parser.getNumberValue().intValue();
+						}
+					}
+					if (!parser.nextToken().equals(JsonToken.END_ARRAY))
+						throw new RuntimeException("Unexpected.");
+					break;
+				default:
+					throw new RuntimeException("Unexpected.");
+				}
+				break;
+			default:
+				throw new RuntimeException("Unexpected: " + next);
 			}
 		}
 	}
 
-	public void print(PrintWriter writer)
+	public void write(JsonGenerator writer) throws IOException
 	{
-		writer.print(tiles.length + " ");
-		writer.print(tiles[0].length + " ");
+		writer.writeStartObject();
+
+		writer.writeNumberField("rows", tiles.length);
+		writer.writeNumberField("cols", tiles[0].length);
+
+		writer.writeFieldName("vals");
+		writer.writeStartArray();
+
 		for (int i = 0; i < tiles.length; i++)
 		{
 			for (int j = 0; j < tiles[0].length; j++)
 			{
-				writer.print(tiles[i][j] + " ");
+				writer.writeNumber(tiles[i][j]);
 			}
 		}
+
+		writer.writeEndArray();
+		writer.writeEndObject();
 	}
 
 	public boolean isFinished()
