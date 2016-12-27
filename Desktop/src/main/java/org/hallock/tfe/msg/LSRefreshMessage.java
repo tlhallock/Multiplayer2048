@@ -9,11 +9,10 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
-public class LSCreateLobby extends LSLobbyServerMessage
+public class LSRefreshMessage extends LSLobbyServerMessage
 {
-	public LSCreateLobby() {}
-
-	public LSCreateLobby(JsonParser parser) throws IOException
+	public LSRefreshMessage() {}
+	public LSRefreshMessage(JsonParser parser) throws IOException
 	{
 		while (!parser.nextToken().equals(JsonToken.END_OBJECT))
 			;
@@ -22,16 +21,16 @@ public class LSCreateLobby extends LSLobbyServerMessage
 	@Override
 	public void perform(LobbyServer server, WaitingPlayer player) throws IOException
 	{
-		server.createLobby(player);
+		player.updateLobby();
 	}
 
 	@Override
 	public void write(JsonGenerator generator) throws IOException
 	{
 		generator.writeStartObject();
-		generator.writeStringField(Message.TYPE_FIELD, TYPE);
+		generator.writeStringField(TYPE_FIELD, TYPE);
 		generator.writeEndObject();
 	}
 
-	public static final String TYPE = "create_lobby";
+	public static final String TYPE = "refresh";
 }

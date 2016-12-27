@@ -7,9 +7,10 @@ package org.hallock.tfe.serve;
 
 import java.io.IOException;
 
+import org.hallock.tfe.cmn.game.History;
+import org.hallock.tfe.cmn.game.TileBoard;
 import org.hallock.tfe.cmn.util.Connection;
 import org.hallock.tfe.msg.LCLobbyChanged;
-import org.hallock.tfe.serve.Lobby.LobbyInfo;
 
 /**
  *
@@ -25,15 +26,21 @@ public class WaitingPlayer
 	int assignedPlayerNumber;
 
 	boolean ready;
+	boolean admin;
+
+	public TileBoard board;
+	public History history;
 
 	public WaitingPlayer(Connection connection2)
 	{
 		this.connection = connection2;
 	}
 	
-	public void updateLobby(boolean isAdmin, LobbyInfo info) throws IOException
+	public void updateLobby() throws IOException
 	{
-		connection.sendMessageAndFlush(new LCLobbyChanged(isAdmin, info));
+		connection.sendMessageAndFlush(new LCLobbyChanged(
+				assignedPlayerNumber == 0,
+				assignedLobby.getInfo()));
 	}
 
 	void kick()
@@ -44,5 +51,19 @@ public class WaitingPlayer
 	String getHostInfo()
 	{
 		return "192.168.0.100:728304";
+	}
+
+	public void setReady(boolean ready2) throws IOException
+	{
+		if (ready == ready2)
+			return;
+		ready = ready2;
+		if (assignedLobby != null)
+			assignedLobby.changed();
+	}
+
+	public Lobby getLobby()
+	{
+		return assignedLobby;
 	}
 }

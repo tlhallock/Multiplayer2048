@@ -3,7 +3,7 @@ package org.hallock.tfe.serve;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -13,10 +13,11 @@ import org.hallock.tfe.cmn.sys.Constants;
 import org.hallock.tfe.cmn.util.Connection;
 import org.hallock.tfe.cmn.util.Json;
 import org.hallock.tfe.cmn.util.Utils;
+import org.hallock.tfe.msg.GSServerMessage;
+import org.hallock.tfe.msg.LCLaunchGame;
 import org.hallock.tfe.msg.LCLobbiesListMessage;
 import org.hallock.tfe.msg.LSLobbyServerMessage;
 import org.hallock.tfe.msg.Message;
-import org.hallock.tfe.serve.Lobby.LobbyInfo;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -24,12 +25,13 @@ import com.fasterxml.jackson.core.JsonParser;
 public class LobbyServer
 {
 	ExecutorService newFixedThreadPool = Executors.newFixedThreadPool(2);
-	LinkedList<Lobby> lobbies = new LinkedList<>();
+	HashMap<String, Lobby> lobbies = new HashMap<>();
         
         public void listLobbies(WaitingPlayer player) throws IOException
         {
         	LCLobbiesListMessage msg = new LCLobbiesListMessage();
-                for (Lobby lobby : lobbies)
+        	
+                for (Lobby lobby : lobbies.values())
                 {
                     if (!lobby.needsPlayers())
                     {
@@ -42,21 +44,86 @@ public class LobbyServer
                 player.connection.sendMessageAndFlush(msg);
         }
         
-        public LobbyInfo createLobby(WaitingPlayer player)
+        public void createLobby(WaitingPlayer player) throws IOException
         {
-        	String id = Utils.createRandomString(50);
         	Lobby lobby = new Lobby();
         	lobby.host = player;
-        	lobby.id = id;
+        	lobby.waitingPlayers.add(player);
         	lobby.options = new GameOptions();
-        	lobbies.add(lobby);
-        	return lobby.getInfo();
+        	do {
+        		String id = Utils.createRandomString(50);
+                	lobby.id = id;
+        	} while (lobbies.containsKey(lobby.id));
+        	lobbies.put(lobby.id, lobby);
+        	
+        	player.assignedLobby = lobby;
+        	player.admin = true;
+        	lobby.setNumPlayers(lobby.options.numberOfPlayers);
         }
         
-        public void addUserToLobby()
+        public void addUserToLobby(WaitingPlayer player, String id) throws IOException
         {
-        	
+        	Lobby lobby = lobbies.get(id);
+        	if (lobby == null)
+        		return;
+        	player.assignedLobby = lobby;
+        	lobby.addPlayer(player);
 	}
+        
+        public void startGame(Lobby lobby) throws IOException
+        {
+		lobby.game = new GameServer(lobby.options);
+		for (WaitingPlayer player : lobby.waitingPlayers)
+		{
+			lobby.game.add(player);
+			player.connection.sendMessageAndFlush(new LCLaunchGame());
+		}
+
+//		
+//		for (int i = 0; i < numPlayers; i++)
+//		{
+//			final int playerNum = i;
+//			ts[i] = new Thread(new Runnable(){
+//				@Override
+//				public void run()
+//				{
+//					System.out.println("Waiting for player " + playerNum);
+//					try (Socket accept = serverSocket.accept();
+//						JsonGenerator generator = Json.createOpenedGenerator(accept.getOutputStream());
+//						JsonParser parser = Json.createParser(accept.getInputStream());)
+//					{
+//						System.out.println("Opened connection " + playerNum);
+//						Connection connection = new Connection(accept, generator, parser);
+//						connection.readOpen();
+//						
+//						Player player = new Player(connection, playerNum, server);
+//						server.add(player);
+//
+//						Message message;
+//						while ((message = connection.readMessage()) != null)
+//						{
+//							if (!(message instanceof GSServerMessage))
+//							{
+//								System.out.println("ignoring " + message);
+//							}
+//							GSServerMessage msg = (GSServerMessage) message;
+//							msg.perform(playerNum, server);
+//						}
+//					}
+//					catch (IOException e)
+//					{
+//						e.printStackTrace();
+//					}
+//				}});
+//			ts[i].start();
+//		}
+//
+//		for (int i = 0; i < numPlayers; i++)
+//		{
+//			ts[i].join();
+//		}
+//	
+        }
 
 	public void nothing() throws IOException
 	{
@@ -100,18 +167,30 @@ public class LobbyServer
 			Message message;
 			while ((message = connection.readMessage()) != null)
 			{
-				if (!(message instanceof LSLobbyServerMessage))
+				if (message instanceof LSLobbyServerMessage)
+				{
+					LSLobbyServerMessage msg = (LSLobbyServerMessage) message;
+					msg.perform(this, player);
+				}
+				else if (message instanceof GSServerMessage)
+				{
+					Lobby lobby = player.getLobby();
+					if (lobby == null)
+						continue;
+					if (lobby.game == null)
+						continue;
+					GSServerMessage msg = (GSServerMessage) message;
+					msg.perform(player.assignedPlayerNumber, lobby.game);
+				}
+				else
 				{
 					System.out.println("Ignoring " + message);
-					continue;
 				}
-				LSLobbyServerMessage msg = (LSLobbyServerMessage) message;
-				msg.perform(this, player);
 			}
 
 			connection.sendClose();
 		}
-		catch (IOException e)
+		catch (Throwable e)
 		{
 			e.printStackTrace();
 		}

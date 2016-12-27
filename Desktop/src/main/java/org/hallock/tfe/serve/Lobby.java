@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.hallock.tfe.cmn.game.GameOptions;
+import org.hallock.tfe.msg.LSUpdatePlayer.UpdateAction;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -13,72 +14,72 @@ import com.fasterxml.jackson.core.JsonToken;
 
 public class Lobby
 {
-        String lobbyName;
+	GameServer game;
+	
+	String lobbyName;
 	GameOptions options;
 	WaitingPlayer host;
 	String id;
-	
-	
-	
-        ArrayList<PlayerSpec> desiredPlayers = new ArrayList<>();
-        ArrayList<WaitingPlayer> waitingPlayers = new ArrayList<>();
-        
-        private HashMap<Integer, Integer> mapping = new HashMap<>();
-        
-        public void setNumPlayers(int numPlayers)
-        {
-            // Remove extra
-            while (desiredPlayers.size() > numPlayers)
-            {
-                desiredPlayers.remove(desiredPlayers.size()-1);
-            }
-            // Add enough
-            while (desiredPlayers.size() < numPlayers)
-            {
-                desiredPlayers.add(PlayerSpec.Computer);
-            }
-            
-            reassign();
-        }
-        
-        private void reassign()
-        {
-            mapping.clear();
-            // Reassign
-            int assignedIndex = 0;
-            for (int i=0;i<desiredPlayers.size();i++)
-            {
-                if (!desiredPlayers.get(i).equals(PlayerSpec.HumanPlayer))
-                {
-                    continue;
-                }
-                
-                if (assignedIndex >= waitingPlayers.size())
-                {
-                    mapping.put(i, -1);
-                }
-                else
-                {
-                    waitingPlayers.get(assignedIndex).assignedPlayerNumber = i;
-                    mapping.put(i, assignedIndex);
-                    assignedIndex++;
-                }
-            }
-            
-            // Remove extra players
-            while (waitingPlayers.size() > assignedIndex)
-            {
-                // try catch
-                waitingPlayers.remove(waitingPlayers.size()-1).kick();
-            }
-        }
-        
-        
-        public void setPlayerSpec(int player, PlayerSpec spec)
-        {
-            desiredPlayers.set(player, spec);
-            reassign();
-        }
+
+	ArrayList<PlayerSpec> desiredPlayers = new ArrayList<>();
+	ArrayList<WaitingPlayer> waitingPlayers = new ArrayList<>();
+
+	private HashMap<Integer, Integer> mapping = new HashMap<>();
+
+	public void setNumPlayers(int numPlayers) throws IOException
+	{
+		// Remove extra
+		while (desiredPlayers.size() > numPlayers)
+		{
+			desiredPlayers.remove(desiredPlayers.size() - 1);
+		}
+		// Add enough
+		while (desiredPlayers.size() < numPlayers)
+		{
+			desiredPlayers.add(desiredPlayers.size() == 0 ? PlayerSpec.HumanPlayer : PlayerSpec.Computer);
+		}
+
+		reassign();
+	}
+
+	private void reassign() throws IOException
+	{
+		mapping.clear();
+		// Reassign
+		int assignedIndex = 0;
+		for (int i = 0; i < desiredPlayers.size(); i++)
+		{
+			if (!desiredPlayers.get(i).equals(PlayerSpec.HumanPlayer))
+			{
+				continue;
+			}
+
+			if (assignedIndex >= waitingPlayers.size())
+			{
+				mapping.put(i, -1);
+			}
+			else
+			{
+				waitingPlayers.get(assignedIndex).assignedPlayerNumber = i;
+				mapping.put(i, assignedIndex);
+				assignedIndex++;
+			}
+		}
+
+		// Remove extra players
+		while (waitingPlayers.size() > assignedIndex)
+		{
+			// try catch
+			waitingPlayers.remove(waitingPlayers.size() - 1).kick();
+		}
+		changed();
+	}
+
+	public void setPlayerSpec(int player, PlayerSpec spec) throws IOException
+	{
+		desiredPlayers.set(player, spec);
+		reassign();
+	}
         
         
         
@@ -89,11 +90,7 @@ public class Lobby
         
         
         
-        
-        
-        
-        
-        public boolean addPlayer(WaitingPlayer player)
+        public boolean addPlayer(WaitingPlayer player) throws IOException
         {
             if (!needsPlayers())
                 return false;
@@ -142,13 +139,18 @@ public class Lobby
 		info.id = id;
 		info.options = new GameOptions(options);
 		info.players = new PlayerInfo[desiredPlayers.size()];
+		info.allReady = true;
+		
 		for (int i = 0; i < desiredPlayers.size(); i++)
 		{
 			info.players[i] = new PlayerInfo();
+			info.players[i].playerNumber = i;
 			if (!desiredPlayers.get(i).equals(PlayerSpec.HumanPlayer))
 			{
 				info.players[i].name = "Computer";
 				info.players[i].status = "ready";
+				info.players[i].type = PlayerSpec.Computer;
+//				info.players[i].playerNumber = -1;
 				continue;
 			}
 
@@ -157,12 +159,18 @@ public class Lobby
 			{
 				info.players[i].name = "empty";
 				info.players[i].status = "waiting";
+				info.players[i].type = PlayerSpec.HumanPlayer;
+//				info.players[i].playerNumber = -1;
+				info.allReady = false;
 				break;
 			}
 
 			WaitingPlayer wp = waitingPlayers.get(waitingIndex);
 			info.players[i].name = wp.getHostInfo();
+			info.allReady &= wp.ready;
 			info.players[i].status = wp.ready ? "Ready" : "Not ready";
+			info.players[i].type = PlayerSpec.HumanPlayer;
+//			info.players[i].playerNumber = wp.assignedPlayerNumber;
 		}
 
 		return info;
@@ -171,6 +179,7 @@ public class Lobby
 	// This is a serializable version...
 	public static final class LobbyInfo
 	{
+		public boolean allReady;
 		public GameOptions options;
 		public PlayerInfo[] players;
 		public String id;
@@ -189,6 +198,26 @@ public class Lobby
 				String currentName = parser.getCurrentName();
 				switch (parser.nextToken())
 				{
+				case VALUE_FALSE:
+					switch (currentName)
+					{
+					case "all_ready":
+						allReady = false; 
+						break;
+					default:
+						throw new RuntimeException("Unexpected.");
+					}
+					break;
+				case VALUE_TRUE:
+					switch (currentName)
+					{
+					case "all_ready":
+						allReady = true; 
+						break;
+					default:
+						throw new RuntimeException("Unexpected.");
+					}
+					break;
 				case VALUE_STRING:
 					switch (currentName)
 					{
@@ -231,6 +260,7 @@ public class Lobby
 							{
 							case START_OBJECT:
 								players[index++] = new PlayerInfo(parser);
+								break;
 							default:
 								throw new RuntimeException("Unexpected.");
 							}
@@ -250,6 +280,7 @@ public class Lobby
 		{
 			writer.writeStartObject();
 			writer.writeStringField("id", id);
+			writer.writeBooleanField("all_ready", allReady);
 			writer.writeFieldName("options");
 			options.print(writer);
 			writer.writeNumberField("numplayers", players.length);
@@ -269,6 +300,36 @@ public class Lobby
 		public String getName()
 		{
 			return "a name";
+		}
+	}
+
+	public void changed() throws IOException
+	{
+		for (WaitingPlayer player : waitingPlayers)
+		{
+			player.updateLobby();
+		}
+	}
+
+	public void performAction(UpdateAction action, int playerNumber, WaitingPlayer player) throws IOException
+	{
+		if (!player.admin)
+		{
+			return;
+		}
+		switch (action)
+		{
+		case Kick:
+			player.kick();
+			break;
+		case SetComputer:
+			desiredPlayers.set(playerNumber, PlayerSpec.Computer);
+			reassign();
+			break;
+		case SetHuman:
+			desiredPlayers.set(playerNumber, PlayerSpec.HumanPlayer);
+			reassign();
+			break;
 		}
 	}
 }

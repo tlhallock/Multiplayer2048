@@ -20,6 +20,7 @@ public class PlayerInfo
 	public PlayerSpec type;
 	public String name;
 	public String status;
+	public int playerNumber;
 
 	public PlayerInfo() {}
 
@@ -34,6 +35,16 @@ public class PlayerInfo
 			String currentName = parser.getCurrentName();
 			switch (parser.nextToken())
 			{
+			case VALUE_NUMBER_INT:
+				switch (currentName)
+				{
+				case "number":
+					playerNumber = parser.getIntValue();
+					break;
+				default:
+					throw new RuntimeException("Unexpected.");
+				}
+				break;
 			case VALUE_STRING:
 				switch (currentName)
 				{
@@ -62,6 +73,7 @@ public class PlayerInfo
 		writer.writeStringField("type", type.name());
 		writer.writeStringField("name", name);
 		writer.writeStringField("status", status);
+		writer.writeNumberField("number", playerNumber);
 		writer.writeEndObject();
 	}
 }

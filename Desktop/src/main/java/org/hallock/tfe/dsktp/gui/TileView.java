@@ -15,10 +15,11 @@ public class TileView extends JPanel {
 
 	public void setTileBoard(TileBoard board)
 	{
-		this.state = board;
+		this.state = new TileBoard(board);
 		repaint();
 	}
 
+	@Override
 	public void paint(Graphics gr) {
 		Graphics2D g = (Graphics2D) gr;
 		int w = getWidth();

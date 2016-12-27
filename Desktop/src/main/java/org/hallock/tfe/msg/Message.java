@@ -1,6 +1,10 @@
 package org.hallock.tfe.msg;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+
+import org.hallock.tfe.cmn.util.Json;
+import org.hallock.tfe.dsktp.gui.LSJoinLobby;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -48,17 +52,28 @@ public abstract class Message
 			
 			
 			
-			
 		case LCLobbiesListMessage.TYPE:
 			return new LCLobbiesListMessage(parser);
+		case LCLobbyChanged.TYPE:
+			return new LCLobbyChanged(parser);
+		case LCLaunchGame.TYPE:
+			return new LCLaunchGame(parser);
 		case LSListLobbiesMessage.TYPE:
 			return new LSListLobbiesMessage(parser);
 		case LSCreateLobby.TYPE:
 			return new LSCreateLobby(parser);
-		case LCLobbyChanged.TYPE:
-			return new LCLobbyChanged(parser);
-			
-			
+		case LSRefreshMessage.TYPE:
+			return new LSRefreshMessage(parser);
+		case LSReadyMessage.TYPE:
+			return new LSReadyMessage(parser);
+		case LSUpdateOptions.TYPE:
+			return new LSUpdateOptions(parser);
+		case LSUpdatePlayer.TYPE:
+			return new LSUpdatePlayer(parser);
+		case LSJoinLobby.TYPE:
+			return new LSJoinLobby(parser);
+		case LSLaunch.TYPE:
+			return new LSLaunch(parser);
 		default:
 			throw new RuntimeException("Unrecognized type: " + next);
 		}
@@ -67,17 +82,16 @@ public abstract class Message
 	@Override
 	public String toString()
 	{
-//		ByteArrayOutputStream output = new ByteArrayOutputStream();
-//		try (JsonGenerator generator = Json.createUnopenedGenerator(output);)
-//		{
-//			write(generator);
-//			return new String(output.toByteArray());
-//		}
-//		catch (IOException e)
-//		{
-//			e.printStackTrace();
-//			return "error";
-//		}
-		return "boring";
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+		try (JsonGenerator generator = Json.createUnopenedGenerator(output);)
+		{
+			write(generator);
+			return new String(output.toByteArray());
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+			return "error";
+		}
 	}
 }

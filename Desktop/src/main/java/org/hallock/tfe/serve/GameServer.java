@@ -21,16 +21,16 @@ import com.fasterxml.jackson.core.JsonParser;
 
 public class GameServer
 {
-	ArrayList<Player> connections = new ArrayList<>();
+	ArrayList<WaitingPlayer> connections = new ArrayList<>();
 	
 	GameOptions options;
 	
-	public GameServer(int numPlayers, GameOptions options)
+	public GameServer(GameOptions options)
 	{
 		this.options = options;
 	}
 
-	private synchronized void add(Player player) throws IOException
+	synchronized void add(WaitingPlayer player) throws IOException
 	{
 		connections.add(player);
 		// bad place for this?
@@ -45,18 +45,18 @@ public class GameServer
 	
 	private synchronized void broadCast() throws IOException
 	{
-		for (Player c : connections)
+		for (WaitingPlayer c : connections)
 		{
 			broadCast(c);
 		}
 	}
 
-	private synchronized void broadCast(Player player) throws IOException
+	private synchronized void broadCast(WaitingPlayer player) throws IOException
 	{
-		for (Player c : connections)
+		for (WaitingPlayer c : connections)
 		{
 			player.connection.sendMessageWithoutFlushing(
-					new GCGameStateChanged(c.playerNum, c.board));
+					new GCGameStateChanged(c.assignedPlayerNumber, c.board));
 		}
 		player.connection.flush();
 	}
@@ -116,7 +116,7 @@ public class GameServer
 			break;
 		}
 		case Quit:
-			connections.get(player).quit();
+//			connections.get(player).quit();
 			break;
 			
 		case ShowAllTileBoards:
@@ -159,12 +159,11 @@ public class GameServer
 	{
 		try (ServerSocket serverSocket = new ServerSocket(Constants.TEMP_PORT);)
 		{
-			int numPlayers = 2;
-			final GameServer server = new GameServer(numPlayers, new GameOptions());
+			final GameServer server = new GameServer(new GameOptions());
 
-			Thread[] ts = new Thread[numPlayers];
+			Thread[] ts = new Thread[server.options.numberOfPlayers];
 
-			for (int i = 0; i < numPlayers; i++)
+			for (int i = 0; i < server.options.numberOfPlayers; i++)
 			{
 				final int playerNum = i;
 				ts[i] = new Thread(new Runnable(){
@@ -181,7 +180,7 @@ public class GameServer
 							connection.readOpen();
 							
 							Player player = new Player(connection, playerNum, server);
-							server.add(player);
+//							server.add(player);
 
 							Message message;
 							while ((message = connection.readMessage()) != null)
@@ -202,7 +201,7 @@ public class GameServer
 				ts[i].start();
 			}
 
-			for (int i = 0; i < numPlayers; i++)
+			for (int i = 0; i < server.options.numberOfPlayers; i++)
 			{
 				ts[i].join();
 			}

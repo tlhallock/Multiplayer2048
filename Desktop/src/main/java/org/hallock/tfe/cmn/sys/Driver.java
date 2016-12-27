@@ -23,9 +23,11 @@ public class Driver {
                 
 		LobbyServer.launch();
 		
-		
-		LobbyViewer lobbyViewer = new LobbyViewer();
-		SinglePanelFrame.showPanel(lobbyViewer, new Rectangle(50,50,500,500), "Testing");
+		LobbyViewer lobbyViewer1 = new LobbyViewer();
+		SinglePanelFrame.showPanel(lobbyViewer1, new Rectangle(50,   50, 500, 500), "Testing 1");
+
+		LobbyViewer lobbyViewer2 = new LobbyViewer();
+		SinglePanelFrame.showPanel(lobbyViewer2, new Rectangle(550, 50, 500, 500), "Testing 2");
 		
 	}
 

@@ -5,24 +5,36 @@
  */
 package org.hallock.tfe.dsktp.gui;
 
-import java.awt.Dimension;
+import java.awt.Color;
 import java.io.IOException;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.LinkedList;
 
 import javax.swing.DefaultListModel;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
 import javax.swing.ListModel;
 
+import org.hallock.tfe.client.ClientKeyListener;
+import org.hallock.tfe.client.GameClient;
+import org.hallock.tfe.cmn.game.GameOptions;
+import org.hallock.tfe.cmn.game.PossiblePlayerActions;
 import org.hallock.tfe.cmn.sys.Constants;
 import org.hallock.tfe.cmn.util.Connection;
 import org.hallock.tfe.cmn.util.Json;
+import org.hallock.tfe.cmn.util.Utils;
+import org.hallock.tfe.msg.GCClientMessage;
+import org.hallock.tfe.msg.GSPlayerAction;
 import org.hallock.tfe.msg.LCLobbyClientMessage;
 import org.hallock.tfe.msg.LSCreateLobby;
+import org.hallock.tfe.msg.LSLaunch;
 import org.hallock.tfe.msg.LSListLobbiesMessage;
+import org.hallock.tfe.msg.LSReadyMessage;
+import org.hallock.tfe.msg.LSRefreshMessage;
+import org.hallock.tfe.msg.LSUpdateOptions;
 import org.hallock.tfe.msg.Message;
 import org.hallock.tfe.serve.Lobby.LobbyInfo;
-import org.hallock.tfe.serve.PlayerInfo;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -31,9 +43,15 @@ public class LobbyViewer extends javax.swing.JPanel {
     
     LobbyConnector somethingToChangeTheOptions;
     DefaultListModel<LobbyDisplay> lobbyListModel = new DefaultListModel<>();
+    Connection connection;
+    GameOptions options;
     
-    private static final int PLAYER_WIDTH = 500;
+    private static final int PLAYER_WIDTH = 750;
     private static final int PLAYER_HEIGHT = 50;
+    
+    boolean admin;
+    boolean allReady;
+    GameClient client;
     
     /**
      * Creates new form LobbyViewer
@@ -41,6 +59,7 @@ public class LobbyViewer extends javax.swing.JPanel {
     public LobbyViewer() {
         initComponents();
         jPanel1.setLayout(null);
+        setLobby(false, null);
     }
     
     private ListModel<LobbyDisplay> getListModel()
@@ -65,6 +84,7 @@ public class LobbyViewer extends javax.swing.JPanel {
         jList1 = new javax.swing.JList<>();
         jButton2 = new javax.swing.JButton();
         jButton3 = new javax.swing.JButton();
+        jButton6 = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
         jButton1 = new javax.swing.JButton();
         jCheckBox1 = new javax.swing.JCheckBox();
@@ -79,9 +99,13 @@ public class LobbyViewer extends javax.swing.JPanel {
         jSpinner3 = new javax.swing.JSpinner();
         jLabel2 = new javax.swing.JLabel();
         jLabel6 = new javax.swing.JLabel();
+        jButton5 = new javax.swing.JButton();
         jPanel4 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         jPanel1 = new javax.swing.JPanel();
+        jButton4 = new javax.swing.JButton();
+
+        jSplitPane1.setDividerLocation(300);
 
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Lobbies:"));
 
@@ -96,6 +120,7 @@ public class LobbyViewer extends javax.swing.JPanel {
         jLabel3.setText("Server:");
 
         jList1.setModel(getListModel());
+        jList1.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         jScrollPane2.setViewportView(jList1);
 
         jButton2.setText("Refresh");
@@ -114,15 +139,22 @@ public class LobbyViewer extends javax.swing.JPanel {
             }
         });
 
+        jButton6.setText("Join");
+        jButton6.addActionListener(new java.awt.event.ActionListener() {
+            @Override
+	public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton6ActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
+                    .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 267, Short.MAX_VALUE)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
                         .addGap(0, 0, Short.MAX_VALUE)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -132,7 +164,9 @@ public class LobbyViewer extends javax.swing.JPanel {
                                 .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
                                 .addComponent(jButton3)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jButton6)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(jButton2)))))
                 .addContainerGap())
         );
@@ -143,11 +177,12 @@ public class LobbyViewer extends javax.swing.JPanel {
                     .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel3))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 507, Short.MAX_VALUE)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 516, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButton2)
-                    .addComponent(jButton3))
+                    .addComponent(jButton3)
+                    .addComponent(jButton6))
                 .addContainerGap())
         );
 
@@ -175,10 +210,11 @@ public class LobbyViewer extends javax.swing.JPanel {
 
         jLabel5.setText("jLabel5");
 
-        jSplitPane2.setDividerLocation(150);
+        jSplitPane2.setDividerLocation(200);
         jSplitPane2.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
 
         jPanel5.setBorder(javax.swing.BorderFactory.createTitledBorder("Game Options"));
+        jPanel5.setPreferredSize(new java.awt.Dimension(200, 150));
 
         jLabel1.setText("Number of players:");
 
@@ -209,7 +245,15 @@ public class LobbyViewer extends javax.swing.JPanel {
 
         jLabel2.setText("Number of rows:");
 
-        jLabel6.setText("Number of Columns:");
+        jLabel6.setText("Number of columns:");
+
+        jButton5.setText("Send");
+        jButton5.addActionListener(new java.awt.event.ActionListener() {
+            @Override
+	public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton5ActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
         jPanel5.setLayout(jPanel5Layout);
@@ -230,7 +274,10 @@ public class LobbyViewer extends javax.swing.JPanel {
                         .addComponent(jLabel6)
                         .addGap(18, 18, 18)
                         .addComponent(jSpinner3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(597, Short.MAX_VALUE))
+                .addContainerGap(295, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel5Layout.createSequentialGroup()
+                .addGap(0, 0, Short.MAX_VALUE)
+                .addComponent(jButton5))
         );
         jPanel5Layout.setVerticalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -247,7 +294,9 @@ public class LobbyViewer extends javax.swing.JPanel {
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jSpinner3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel6))
-                .addContainerGap(181, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jButton5)
+                .addContainerGap())
         );
 
         jScrollPane3.setViewportView(jPanel5);
@@ -255,8 +304,6 @@ public class LobbyViewer extends javax.swing.JPanel {
         jSplitPane2.setTopComponent(jScrollPane3);
 
         jPanel4.setBorder(javax.swing.BorderFactory.createTitledBorder(javax.swing.BorderFactory.createTitledBorder("Players")));
-
-        jPanel1.setBackground(new java.awt.Color(255, 51, 204));
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -284,31 +331,38 @@ public class LobbyViewer extends javax.swing.JPanel {
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel4Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 301, Short.MAX_VALUE)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 260, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
         jSplitPane2.setRightComponent(jPanel4);
+
+        jButton4.setText("Refresh");
+        jButton4.addActionListener(new java.awt.event.ActionListener() {
+            @Override
+	public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton4ActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(jButton4)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(jCheckBox1)
                         .addGap(18, 18, 18)
                         .addComponent(jButton1))
+                    .addComponent(jSplitPane2, javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel3Layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jSplitPane2)
-                            .addGroup(jPanel3Layout.createSequentialGroup()
-                                .addComponent(jLabel4)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))))
+                        .addComponent(jLabel4)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         jPanel3Layout.setVerticalGroup(
@@ -319,11 +373,12 @@ public class LobbyViewer extends javax.swing.JPanel {
                     .addComponent(jLabel4)
                     .addComponent(jLabel5))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jSplitPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 502, Short.MAX_VALUE)
+                .addComponent(jSplitPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 511, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButton1)
-                    .addComponent(jCheckBox1))
+                    .addComponent(jCheckBox1)
+                    .addComponent(jButton4))
                 .addContainerGap())
         );
 
@@ -335,7 +390,7 @@ public class LobbyViewer extends javax.swing.JPanel {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jSplitPane1)
+                .addComponent(jSplitPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 805, Short.MAX_VALUE)
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -348,7 +403,8 @@ public class LobbyViewer extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void jCheckBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox1ActionPerformed
-        updateUi();
+	    sendReadyUpdate();
+	    updateUi();
     }//GEN-LAST:event_jCheckBox1ActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
@@ -360,7 +416,21 @@ public class LobbyViewer extends javax.swing.JPanel {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                createLobby();
+                createConnection(new Runnable() {
+
+			@Override
+			public void run()
+			{
+				try
+				{
+					connection.sendMessageAndFlush(new LSCreateLobby());
+					connection.sendMessageAndFlush(new LSListLobbiesMessage());
+				}
+				catch (IOException e)
+				{
+					e.printStackTrace();
+				}
+			}});
             }
         }).start();
     }//GEN-LAST:event_jButton3ActionPerformed
@@ -378,10 +448,23 @@ public class LobbyViewer extends javax.swing.JPanel {
     }//GEN-LAST:event_jSpinner3StateChanged
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-        // reconnected to the current host
-        
+	    	//reconnected to the current host
 		String ip = jTextField1.getText();
 		int port = Constants.LOBBY_PORT;
+		
+		if (connection != null)
+		{
+			// check that it is the same lobby server...
+			try
+			{
+				connection.sendMessageAndFlush(new LSListLobbiesMessage());
+			}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+			}
+			return;
+		}
 
 		try (Socket socket = new Socket(ip, port);
 			JsonGenerator generator = Json.createOpenedGenerator(socket.getOutputStream());
@@ -401,11 +484,7 @@ public class LobbyViewer extends javax.swing.JPanel {
 			LCLobbyClientMessage msg = (LCLobbyClientMessage) message;
 			msg.perform(this);
 		}
-		catch (UnknownHostException e)
-		{
-			e.printStackTrace();
-		}
-		catch (IOException e)
+		catch (Throwable e)
 		{
 			e.printStackTrace();
 		}
@@ -415,11 +494,75 @@ public class LobbyViewer extends javax.swing.JPanel {
         // TODO add your handling code here:
     }//GEN-LAST:event_jTextField1ActionPerformed
 
+    private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
+        try
+	{
+        	if (connection != null)
+        		connection.sendMessageAndFlush(new LSRefreshMessage());
+	}
+	catch (IOException e)
+	{
+		e.printStackTrace();
+	}
+    }//GEN-LAST:event_jButton4ActionPerformed
+
+    private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
+        try
+	{
+        	if (connection != null)
+        		connection.sendMessageAndFlush(new LSUpdateOptions(createOptions()));
+	}
+	catch (IOException e)
+	{
+		e.printStackTrace();
+	}
+    }//GEN-LAST:event_jButton5ActionPerformed
+
+    private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
+		final LobbyDisplay display = jList1.getSelectedValue();
+		if (display == null)
+			return;
+		if (connection != null)
+			try
+			{
+				connection.sendClose();
+			}
+			catch (IOException e1)
+			{
+				e1.printStackTrace();
+			}
+		new Thread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				createConnection(new Runnable()
+				{
+					@Override
+					public void run()
+					{
+						try
+						{
+							connection.sendMessageAndFlush(new LSJoinLobby(display.id));
+						}
+						catch (IOException e)
+						{
+							e.printStackTrace();
+						}
+					}
+				});
+			}
+		}).start();
+    }//GEN-LAST:event_jButton6ActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
     private javax.swing.JButton jButton3;
+    private javax.swing.JButton jButton4;
+    private javax.swing.JButton jButton5;
+    private javax.swing.JButton jButton6;
     private javax.swing.JCheckBox jCheckBox1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
@@ -453,78 +596,167 @@ public class LobbyViewer extends javax.swing.JPanel {
         jSpinner1.setEnabled(somethingToChangeTheOptions != null);
         jSpinner2.setEnabled(somethingToChangeTheOptions != null);
         jSpinner3.setEnabled(somethingToChangeTheOptions != null);
+        jButton1.setEnabled(admin && allReady);
     }
     
     private void optionsChanged() {
-        // do something to somethingToChangeTheOptions
-    }
-
-    private void launch() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-    
-    public void setLobby(boolean isAdmin, LobbyInfo lobby)
-    {
-        if (lobby == null)
+        if (connection == null)
         {
-            // set everything to defaults...
             return;
         }
-        
-        jSpinner1.setValue(lobby.options.numberOfPlayers);
-        jSpinner2.setValue(lobby.options.numRows);
-        jSpinner3.setValue(lobby.options.numCols);
-        
-        int cY = 0;
-        jPanel1.removeAll();
-        for (PlayerInfo p : lobby.players)
-        {
-            LobbyPlayer player = new LobbyPlayer(p, somethingToChangeTheOptions);
-            player.setBounds(0, cY, PLAYER_WIDTH, PLAYER_HEIGHT);
-            cY += PLAYER_HEIGHT;
-            jPanel1.add(player);
-        }
-        
-        jPanel1.setPreferredSize(new Dimension(PLAYER_WIDTH, cY));
+        System.out.println("Would update options...");
+	jButton5.setEnabled(true);
     }
     
+
+    private GameOptions createOptions()
+    {
+        GameOptions options = null;
+        if (this.options == null)
+        	options = new GameOptions(this.options);
+        else
+        	options = new GameOptions();
+        
+        options.numberOfPlayers = 	((Number) jSpinner1.getValue()).intValue();
+        options.numRows = 		((Number) jSpinner2.getValue()).intValue();
+        options.numCols = 		((Number) jSpinner3.getValue()).intValue();
+        
+        return options;
+    }
+
+	private void launch()
+	{
+		if (connection == null)
+			return;
+		try
+		{
+			connection.sendMessageAndFlush(new LSLaunch());
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public void setLobby(boolean isAdmin, LobbyInfo lobby)
+	{
+		jButton5.setEnabled(false);
+		if (lobby == null)
+		{
+			allReady = false;
+			admin = false;
+			jSpinner1.setEnabled(false);
+			jSpinner2.setEnabled(false);
+			jSpinner3.setEnabled(false);
+			jButton4.setEnabled(false);
+			jCheckBox1.setEnabled(false);
+			jButton1.setEnabled(false);
+			// set everything to defaults...
+			return;
+		}
+
+		admin = isAdmin;
+		allReady = lobby.allReady;
+		
+
+		jSpinner1.setEnabled(admin);
+		jSpinner2.setEnabled(admin);
+		jSpinner3.setEnabled(admin);
+		jButton4.setEnabled(admin);
+		jButton1.setEnabled(admin && allReady);
+		jButton5.setEnabled(admin);
+		jCheckBox1.setEnabled(true);
+
+		options = lobby.options;
+		jSpinner1.setValue(lobby.options.numberOfPlayers);
+		jSpinner2.setValue(lobby.options.numRows);
+		jSpinner3.setValue(lobby.options.numCols);
+
+		LobbyPlayer[] players = new LobbyPlayer[lobby.players.length];
+		for (int i = 0; i < players.length; i++)
+			players[i] = new LobbyPlayer(lobby.players[i], connection, isAdmin);
+
+		jPanel1.removeAll();
+		Utils.attachVertically(jPanel1, players, 50);
+
+//		int cY = 0;
+//		jPanel1.removeAll();
+//		for (PlayerInfo p : lobby.players)
+//		{
+//			LobbyPlayer player = new LobbyPlayer(p, connection, isAdmin);
+//			player.setBounds(0, cY, PLAYER_WIDTH, PLAYER_HEIGHT);
+//			cY += PLAYER_HEIGHT;
+//			jPanel1.add(player);
+//		}
+//
+//		jPanel1.setPreferredSize(new Dimension(PLAYER_WIDTH, cY));
+		jPanel1.repaint();
+	}
     
-	private void createLobby()
+    
+	private void createConnection(Runnable runThisAfter)
 	{
 		String ip = jTextField1.getText();
 		int port = Constants.LOBBY_PORT;
+		
+		// remove old connection
 
 		try (Socket socket = new Socket(ip, port);
 			JsonGenerator generator = Json.createOpenedGenerator(socket.getOutputStream());
 			JsonParser parser = Json.createParser(socket.getInputStream());)
 		{
-			Connection connection = new Connection(socket, generator, parser);
+			connection = new Connection(socket, generator, parser);
 			connection.readOpen();
 
-			connection.sendMessageAndFlush(new LSCreateLobby());
-			connection.sendMessageAndFlush(new LSListLobbiesMessage());
+			if (runThisAfter != null)
+				runThisAfter.run();
 
 			Message message;
 			while ((message = connection.readMessage()) != null)
 			{
-				if (!(message instanceof LCLobbyClientMessage))
+				if (message instanceof LCLobbyClientMessage)
+				{
+					LCLobbyClientMessage msg = (LCLobbyClientMessage) message;
+					msg.perform(this);
+				}
+				else if (message instanceof GCClientMessage && client != null)
+				{
+					GCClientMessage msg = (GCClientMessage) message;
+					msg.perform(client);
+				}
+				else
 				{
 					System.out.println("Ignoring " + message);
                                         continue;
 				}
-				LCLobbyClientMessage msg = (LCLobbyClientMessage) message;
-				msg.perform(this);
 			}
 
 			connection.sendClose();
 		}
-		catch (UnknownHostException e)
+		catch (Throwable e)
 		{
 			e.printStackTrace();
 		}
-		catch (IOException e)
+		finally
 		{
-			e.printStackTrace();
+			connection = null;
+		}
+	}
+
+	
+	private void sendReadyUpdate()
+	{
+		if (connection == null)
+		{
+			return;
+		}
+		try
+		{
+			connection.sendMessageAndFlush(new LSReadyMessage(jCheckBox1.isSelected()));
+		}
+		catch (IOException ex)
+		{
+			ex.printStackTrace();
 		}
 	}
 
@@ -538,15 +770,58 @@ public class LobbyViewer extends javax.swing.JPanel {
 			this.name = name;
 			this.id = id;
 		}
+		
+		@Override
+		public String toString()
+		{
+			return name;
+		}
 	}
 
 	public void setLobbies(LinkedList<LobbyInfo> lobbies)
 	{
-		DefaultListModel<LobbyDisplay> model = new DefaultListModel<>();
+		lobbyListModel.removeAllElements();
 		for (LobbyInfo info : lobbies)
 		{
-			model.addElement(new LobbyDisplay(info.getName(), info.getId()));
+			lobbyListModel.addElement(new LobbyDisplay(info.getName(), info.getId()));
 		}
-		jList1.setModel(model);
+	}
+
+	public void startGame() throws IOException
+	{
+		TileView myself = new TileView();
+		TileView other  = new TileView();
+		
+		JFrame frame = new JFrame();
+		frame.setBounds(50, 50, 500, 500);
+		frame.setTitle("Viewer");
+
+		// This will be the list of available evil actions...
+		JPanel left = new JPanel();
+		left.setBackground(Color.black);
+		
+		JSplitPane inner = new JSplitPane();
+		inner.setLeftComponent(other);
+		inner.setRightComponent(myself);
+		inner.setDividerLocation(200);
+
+		JSplitPane outer = new JSplitPane();
+		outer.setLeftComponent(left);
+		outer.setRightComponent(inner);
+		
+		Utils.attach(frame.getContentPane(), outer);
+		
+		frame.setVisible(true);
+
+		ClientKeyListener listener = new ClientKeyListener(connection);
+		other.addKeyListener(listener);
+		other.setFocusable(true);
+		other.requestFocus();
+
+		client = new GameClient();
+		client.add(myself);
+		client.add(other);
+
+		connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.ShowAllTileBoards));
 	}
 }

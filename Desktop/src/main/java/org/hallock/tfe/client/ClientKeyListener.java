@@ -12,7 +12,7 @@ public class ClientKeyListener implements KeyListener
 {
 	private Connection connection;
 
-	ClientKeyListener(Connection connection)
+	public ClientKeyListener(Connection connection)
 	{
 		this.connection = connection;
 	}

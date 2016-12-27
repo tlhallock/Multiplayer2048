@@ -31,7 +31,8 @@ public class Json
 	
 	public static JsonGenerator createUnopenedGenerator(OutputStream output) throws IOException
 	{
-		output = new TeeOutputStream(output, new FileOutputStream(new File("messagesList_" + Math.random() + ".json")));
+		new File("output/").mkdirs();
+		output = new TeeOutputStream(output, new FileOutputStream(new File("output/messagesList_" + System.currentTimeMillis() + ".json")));
 		
 		JsonGenerator createGenerator = factory.createGenerator(output);
 		createGenerator.setPrettyPrinter(new DefaultPrettyPrinter());
@@ -45,5 +46,4 @@ public class Json
 		createGenerator.flush();
 		return createGenerator;
 	}
-
 }
