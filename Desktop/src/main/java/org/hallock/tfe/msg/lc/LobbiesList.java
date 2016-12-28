@@ -41,6 +41,7 @@ public class LobbiesList extends LobbyClientMessage
 				}
 				break;
 			case START_ARRAY:
+				// should check which field name it is...
 				while (!(next = parser.nextToken()).equals(JsonToken.END_ARRAY))
 				{
 					switch (next)

@@ -13,14 +13,22 @@ public class GameOptions
 	public int numberOfNewTilesPerTurn = 1;
 	public int startingTiles = 3;
 	public boolean skipIsAnOption;
-	public DiscreteDistribution newTileDistribution = new DiscreteDistribution();
+	public DiscreteDistribution newTileDistribution = createDefaultDistribution();
 	public int numRows = 6;
 	public int numCols = 6;
         public int numberOfPlayers = 2;
         
         public GameOptions() {}
         
-        public GameOptions(GameOptions options)
+        private DiscreteDistribution createDefaultDistribution()
+	{
+        	DiscreteDistribution distribution = new DiscreteDistribution();
+        	distribution.add(1, 1);
+        	distribution.add(2, .5);
+        	return distribution;
+	}
+
+	public GameOptions(GameOptions options)
         {
             this.numberOfNewTilesPerTurn = options.numberOfNewTilesPerTurn;
             this.startingTiles = options.startingTiles;
@@ -82,16 +90,16 @@ public class GameOptions
 					break;
 				}
 				break;
-//			case START_OBJECT:
-//				switch (currentName)
-//				{
-//				case "distribution":
-//					info = new LobbyInfo(parser);
-//					break;
-//				default:
-//					throw new RuntimeException("Unexpected.");
-//				}
-//				break;
+			case START_OBJECT:
+				switch (currentName)
+				{
+				case "distribution":
+					newTileDistribution = new DiscreteDistribution(parser);
+					break;
+				default:
+					throw new RuntimeException("Unexpected.");
+				}
+				break;
 			default:
 				throw new RuntimeException("Unexpected.");
 			}
@@ -107,6 +115,8 @@ public class GameOptions
         	generator.writeNumberField("nrows", numRows);
         	generator.writeNumberField("ncols", numCols);
         	generator.writeNumberField("nplayers", numberOfPlayers);
+        	generator.writeFieldName("distribution");
+        	newTileDistribution.write(generator);
         	generator.writeEndObject();
         }
 }
