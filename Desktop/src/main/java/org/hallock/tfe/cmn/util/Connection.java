@@ -4,10 +4,6 @@ import java.io.IOException;
 import java.net.Socket;
 
 import org.hallock.tfe.cmn.sys.Registry;
-import org.hallock.tfe.msg.GCClientMessage;
-import org.hallock.tfe.msg.GSServerMessage;
-import org.hallock.tfe.msg.LCLobbyClientMessage;
-import org.hallock.tfe.msg.LSLobbyServerMessage;
 import org.hallock.tfe.msg.Message;
 
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -37,6 +33,7 @@ public class Connection
 	}
 	public void sendMessageWithoutFlushing(Message message) throws IOException
 	{
+		System.out.println("Sending message " + message);
 		Registry.getLogger().log("Sending message " + message);
 		message.write(generator);
 	}
@@ -88,43 +85,48 @@ public class Connection
 	
 	
 	
-
-	
-	public GSServerMessage readMessageGS() throws IOException
-	{
-		Message parse = readMessage();
-		if (parse instanceof GSServerMessage)
-			return (GSServerMessage) parse;
-		System.out.println("Ignoring " + parse);
-		return null;
-	}
-	public GCClientMessage readMessageGC() throws IOException
-	{
-		Message parse = readMessage();
-		if (parse instanceof GCClientMessage)
-			return (GCClientMessage) parse;
-		System.out.println("Ignoring " + parse);
-		return null;
-	}
-	public LSLobbyServerMessage readMessageLS() throws IOException
-	{
-		Message parse = readMessage();
-		if (parse instanceof LSLobbyServerMessage)
-			return (LSLobbyServerMessage) parse;
-		System.out.println("Ignoring " + parse);
-		return null;
-	}
-	public LCLobbyClientMessage readMessageLC() throws IOException
-	{
-		Message parse = readMessage();
-		if (parse instanceof LCLobbyClientMessage)
-			return (LCLobbyClientMessage) parse;
-		System.out.println("Ignoring " + parse);
-		return null;
-	}
+//
+//	
+//	public GameMessage readMessageGS() throws IOException
+//	{
+//		Message parse = readMessage();
+//		if (parse instanceof GameMessage)
+//			return (GameMessage) parse;
+//		System.out.println("Ignoring " + parse);
+//		return null;
+//	}
+//	public GameViewerMessage readMessageGC() throws IOException
+//	{
+//		Message parse = readMessage();
+//		if (parse instanceof GameViewerMessage)
+//			return (GameViewerMessage) parse;
+//		System.out.println("Ignoring " + parse);
+//		return null;
+//	}
+//	public LobbyMessage readMessageLS() throws IOException
+//	{
+//		Message parse = readMessage();
+//		if (parse instanceof LobbyMessage)
+//			return (LobbyMessage) parse;
+//		System.out.println("Ignoring " + parse);
+//		return null;
+//	}
+//	public LobbyClientMessage readMessageLC() throws IOException
+//	{
+//		Message parse = readMessage();
+//		if (parse instanceof LobbyClientMessage)
+//			return (LobbyClientMessage) parse;
+//		System.out.println("Ignoring " + parse);
+//		return null;
+//	}
 
 	public void flush() throws IOException
 	{
 		generator.flush();
+	}
+
+	public String getConnectionInfo()
+	{
+		return socket.getRemoteSocketAddress().toString();
 	}
 }

@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Scanner;
 
+import org.hallock.tfe.cmn.game.GameOptions;
 import org.hallock.tfe.cmn.game.History;
 import org.hallock.tfe.cmn.game.TileBoard;
+import org.hallock.tfe.cmn.game.TileChanges;
 
 public class CommandlineGame
 {
@@ -13,43 +15,45 @@ public class CommandlineGame
 	{
 		int num = 6;
 		TileBoard state = new TileBoard(num, num);
-		state.randomlyFill(10);
+		GameOptions options = new GameOptions();
+		TileChanges changes = new TileChanges();
+		state.fillTurn(options, changes);
 		History history = new History();
 		BigDecimal turns = BigDecimal.ZERO;
 		String[] possibleMoves = new String[] { "w", "a", "s", "d" };
 		try (Scanner scanner = new Scanner(System.in))
 		{
-			int numToFill = 1;
 			while (!state.isFinished())
 			{
+				changes.clear();
 				// System.out.println(state);
 				// String line = scanner.next();
 				String line = possibleMoves[Constants.random.nextInt(4)];
 				if (line.startsWith("a"))
 				{
-					if (state.left())
-						state.randomlyFill(numToFill);
+					if (state.left(changes).changed())
+						state.fillTurn(options, changes);
 					history.updated(state, line);
 					turns = turns.add(BigDecimal.ONE);
 				}
 				else if (line.startsWith("d"))
 				{
-					if (state.right())
-						state.randomlyFill(numToFill);
+					if (state.right(changes).changed())
+						state.fillTurn(options, changes);
 					history.updated(state, line);
 					turns = turns.add(BigDecimal.ONE);
 				}
 				else if (line.startsWith("w"))
 				{
-					if (state.up())
-						state.randomlyFill(numToFill);
+					if (state.up(changes).changed())
+						state.fillTurn(options, changes);
 					history.updated(state, line);
 					turns = turns.add(BigDecimal.ONE);
 				}
 				else if (line.startsWith("s"))
 				{
-					if (state.down())
-						state.randomlyFill(numToFill);
+					if (state.down(changes).changed())
+						state.fillTurn(options, changes);
 					history.updated(state, line);
 					turns = turns.add(BigDecimal.ONE);
 				}

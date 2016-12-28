@@ -3,208 +3,207 @@ package org.hallock.tfe.serve;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.hallock.tfe.cmn.game.GameOptions;
-import org.hallock.tfe.cmn.game.History;
-import org.hallock.tfe.cmn.game.PossiblePlayerActions;
-import org.hallock.tfe.cmn.game.TileBoard;
-import org.hallock.tfe.cmn.sys.Constants;
 import org.hallock.tfe.cmn.util.Connection;
 import org.hallock.tfe.cmn.util.Json;
-import org.hallock.tfe.msg.GCGameStateChanged;
-import org.hallock.tfe.msg.GSServerMessage;
+import org.hallock.tfe.cmn.util.Utils;
 import org.hallock.tfe.msg.Message;
+import org.hallock.tfe.msg.g.GameMessage;
+import org.hallock.tfe.msg.lc.LobbiesList;
+import org.hallock.tfe.msg.ls.LobbyMessage;
+import org.hallock.tfe.msg.svr.ServerMessage;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 
 public class GameServer
 {
-	ArrayList<WaitingPlayer> connections = new ArrayList<>();
+	ExecutorService newFixedThreadPool = Executors.newFixedThreadPool(2);
+	LinkedList<PlayerConnection> connectedPlayers = new LinkedList<>();
+	HashMap<String, Lobby> lobbies = new HashMap<>();
+	LinkedList<Game> games = new LinkedList<>();
 	
-	GameOptions options;
+
+	ExecutorService executor = Executors.newCachedThreadPool();
+	final Object waitingSync = new Object();
+	int desiredNumberWaiting;
+	int numThreadCurrentlyWaiting;
 	
-	public GameServer(GameOptions options)
+	ServerSocket socket;
+	
+	public GameServer(ServerSocket socket, int desiredWaiting)
 	{
-		this.options = options;
+		this.desiredNumberWaiting = desiredWaiting;
+		this.socket = socket;
+	}
+        
+
+	public void lobbyChanged(Lobby lobby) throws IOException
+	{
+		if (!lobby.needsPlayers())
+			return;
+		listLobbies(connectedPlayers);
 	}
 
-	synchronized void add(WaitingPlayer player) throws IOException
-	{
-		connections.add(player);
-		// bad place for this?
-		player.board = new TileBoard(options.numRows, options.numCols);
-		player.board.randomlyFill(options.startingTiles);
-		player.history = new History();
-		broadCast();
-	}
-	
-	
-	
-	
-	private synchronized void broadCast() throws IOException
-	{
-		for (WaitingPlayer c : connections)
-		{
-			broadCast(c);
-		}
+        public void listLobbies(PlayerConnection connectedPlayer) throws IOException
+        {
+        	listLobbies(Collections.singleton(connectedPlayer));
+        }
+        public void listLobbies(Collection<PlayerConnection> connectedPlayers2) throws IOException
+        {
+        	LobbiesList msg = new LobbiesList();
+        	
+                for (Lobby lobby : lobbies.values())
+                {
+                    if (!lobby.needsPlayers())
+                    {
+                        continue;
+                    }
+                    
+                    msg.foundLobby(lobby.getInfo());
+                }
+                
+                for (PlayerConnection c : connectedPlayers2)
+                {
+                	c.connection.sendMessageAndFlush(msg);
+                }
+        }
+        
+        public void createLobby(PlayerConnection player) throws IOException
+        {
+        	connectedPlayers.remove(player);
+        	Lobby lobby = new Lobby(this);
+        	do {
+        		String id = Utils.createRandomString(50);
+                	lobby.id = id;
+        	} while (lobbies.containsKey(lobby.id));
+        	lobby.options = new GameOptions();
+        	lobby.setNumPlayers(lobby.options.numberOfPlayers, false);
+        	lobby.host = player;
+        	player.lobby = lobby;
+        	player.admin = true;
+        	lobby.addPlayer(player, false);
+        	lobbies.put(lobby.id, lobby);
+        	lobby.broadcastChanges();
+        }
+        
+        public void addUserToLobby(PlayerConnection player, String id) throws IOException
+        {
+        	Lobby lobby = lobbies.get(id);
+        	if (lobby == null)
+        		return;
+        	connectedPlayers.remove(player);
+        	player.lobby = lobby;
+        	player.admin = false;
+        	lobby.addPlayer(player, true);
 	}
 
-	private synchronized void broadCast(WaitingPlayer player) throws IOException
+	public void migrateToGame(Lobby lobby, Game game)
 	{
-		for (WaitingPlayer c : connections)
-		{
-			player.connection.sendMessageWithoutFlushing(
-					new GCGameStateChanged(c.assignedPlayerNumber, c.board));
-		}
-		player.connection.flush();
+        	lobbies.remove(lobby.id);
+        	games.add(game);
 	}
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
-	public void play(int player, PossiblePlayerActions swipe) throws IOException
+        
+        
+	
+        
+	private void ensureSpawned()
 	{
-		boolean changed = false;
-		TileBoard state = connections.get(player).board;
-		History history = connections.get(player).history;
-
-		switch (swipe)
+		if (numThreadCurrentlyWaiting < desiredNumberWaiting)
 		{
-		case Up:
-			if (!state.up())
-				break;
-			state.randomlyFill(options.numberOfNewTilesPerTurn);
-			history.updated(state, "");
-			changed = true;
-			break;
-		case Down:
-			if (!state.down())
-				break;
-			state.randomlyFill(options.numberOfNewTilesPerTurn);
-			history.updated(state, "");
-			changed = true;
-			break;
-		case Left:
-			if (!state.left())
-				break;
-			state.randomlyFill(options.numberOfNewTilesPerTurn);
-			history.updated(state, "");
-			changed = true;
-			break;
-		case Right:
-			if (!state.right())
-				break;
-			state.randomlyFill(options.numberOfNewTilesPerTurn);
-			history.updated(state, "");
-			changed = true;
-			break;
-		case Redo:
-		{
-			TileBoard newState = history.redo();
-			if (newState == null)
-				break;
-			connections.get(player).board = newState;
-			changed = true;
-			break;
+			executor.submit(new Runnable()
+			{
+				@Override
+				public void run()
+				{
+					handleNextConnection();
+				}
+			});
 		}
-		case Undo:
+	}
+        
+	private void handleNextConnection()
+	{
+		synchronized (waitingSync)
 		{
-			TileBoard newState = history.redo();
-			if (newState == null)
-				break;
-			connections.get(player).board = newState;
-			changed = true;
-			break;
-		}
-		case Quit:
-//			connections.get(player).quit();
-			break;
-			
-		case ShowAllTileBoards:
-			broadCast(connections.get(player));
-			break;
-			
-		default:
-			System.out.println("Unknown action: " + swipe);
+			numThreadCurrentlyWaiting++;
+			ensureSpawned();
 		}
 		
-		if (changed)
+		try (Socket accept = socket.accept();
+			JsonGenerator generator = Json.createOpenedGenerator(accept.getOutputStream());
+			JsonParser parser = Json.createParser(accept.getInputStream());)
 		{
-			broadCast();
+			synchronized (waitingSync)
+			{
+				numThreadCurrentlyWaiting--;
+				ensureSpawned();
+			}
+			
+			Connection connection = new Connection(accept, generator, parser);
+			PlayerConnection player = new PlayerConnection(connection);
+			connection.readOpen();
+			connectedPlayers.add(player);
+
+			Message message;
+			while ((message = connection.readMessage()) != null)
+			{
+				// synchronize on player
+				if (message instanceof LobbyMessage && player.lobby != null)
+				{
+					LobbyMessage msg = (LobbyMessage) message;
+					msg.perform(player.lobby, player);
+				}
+				else if (message instanceof GameMessage && player.game != null)
+				{
+					GameMessage msg = (GameMessage) message;
+					msg.perform(player.game, player);
+				}
+				else if (message instanceof ServerMessage)
+				{
+					ServerMessage msg = (ServerMessage) message;
+					msg.perform(this, player);
+				}
+				else
+				{
+					System.out.println("Ignoring " + message);
+				}
+			}
+
+			connection.sendClose();
+		}
+		catch (Throwable e)
+		{
+			e.printStackTrace();
 		}
 	}
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	public static void launchServer() throws InterruptedException, IOException
+	public void start() throws IOException
 	{
-		try (ServerSocket serverSocket = new ServerSocket(Constants.TEMP_PORT);)
-		{
-			final GameServer server = new GameServer(new GameOptions());
-
-			Thread[] ts = new Thread[server.options.numberOfPlayers];
-
-			for (int i = 0; i < server.options.numberOfPlayers; i++)
-			{
-				final int playerNum = i;
-				ts[i] = new Thread(new Runnable(){
-					@Override
-					public void run()
-					{
-						System.out.println("Waiting for player " + playerNum);
-						try (Socket accept = serverSocket.accept();
-							JsonGenerator generator = Json.createOpenedGenerator(accept.getOutputStream());
-							JsonParser parser = Json.createParser(accept.getInputStream());)
-						{
-							System.out.println("Opened connection " + playerNum);
-							Connection connection = new Connection(accept, generator, parser);
-							connection.readOpen();
-							
-							Player player = new Player(connection, playerNum, server);
-//							server.add(player);
-
-							Message message;
-							while ((message = connection.readMessage()) != null)
-							{
-								if (!(message instanceof GSServerMessage))
-								{
-									System.out.println("ignoring " + message);
-								}
-								GSServerMessage msg = (GSServerMessage) message;
-								msg.perform(playerNum, server);
-							}
-						}
-						catch (IOException e)
-						{
-							e.printStackTrace();
-						}
-					}});
-				ts[i].start();
-			}
-
-			for (int i = 0; i < server.options.numberOfPlayers; i++)
-			{
-				ts[i].join();
-			}
-		}
+		ensureSpawned();
 	}
+
+
+
 }

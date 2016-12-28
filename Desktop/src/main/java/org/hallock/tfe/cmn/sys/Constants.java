@@ -1,5 +1,4 @@
 package org.hallock.tfe.cmn.sys;
-import java.net.SocketImpl;
 import java.util.Random;
 
 

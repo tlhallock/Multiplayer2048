@@ -2,10 +2,11 @@ package org.hallock.tfe.serve;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 import org.hallock.tfe.cmn.game.GameOptions;
-import org.hallock.tfe.msg.LSUpdatePlayer.UpdateAction;
+import org.hallock.tfe.cmn.util.Jsonable;
+import org.hallock.tfe.msg.gc.LaunchGame;
+import org.hallock.tfe.msg.ls.UpdatePlayer.UpdateAction;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -14,71 +15,87 @@ import com.fasterxml.jackson.core.JsonToken;
 
 public class Lobby
 {
-	GameServer game;
-	
 	String lobbyName;
 	GameOptions options;
-	WaitingPlayer host;
+	PlayerConnection host;
 	String id;
 
-	ArrayList<PlayerSpec> desiredPlayers = new ArrayList<>();
-	ArrayList<WaitingPlayer> waitingPlayers = new ArrayList<>();
+	ArrayList<PlayerPlaceHolder> players = new ArrayList<>();
 
-	private HashMap<Integer, Integer> mapping = new HashMap<>();
-
-	public void setNumPlayers(int numPlayers) throws IOException
+	private GameServer server;
+	
+	public Lobby(GameServer server)
 	{
-		// Remove extra
-		while (desiredPlayers.size() > numPlayers)
-		{
-			desiredPlayers.remove(desiredPlayers.size() - 1);
-		}
-		// Add enough
-		while (desiredPlayers.size() < numPlayers)
-		{
-			desiredPlayers.add(desiredPlayers.size() == 0 ? PlayerSpec.HumanPlayer : PlayerSpec.Computer);
-		}
-
-		reassign();
+		this.server = server;
 	}
 
-	private void reassign() throws IOException
+	public void setNumPlayers(int numPlayers, boolean b) throws IOException
 	{
-		mapping.clear();
-		// Reassign
-		int assignedIndex = 0;
-		for (int i = 0; i < desiredPlayers.size(); i++)
+		// Add enough
+		while (players.size() < numPlayers)
 		{
-			if (!desiredPlayers.get(i).equals(PlayerSpec.HumanPlayer))
+			players.add(new PlayerPlaceHolder());
+		}
+		pushUp();
+		// Remove extra
+		while (players.size() > numPlayers)
+		{
+			PlayerPlaceHolder playerPlaceHolder = players.get(players.size() - 1);
+			players.remove(players.size() - 1);
+			playerPlaceHolder.kick();
+		}
+
+		if (b)
+			broadcastChanges();
+	}
+
+	private boolean pushUp() throws IOException
+	{
+		boolean changed = false;
+		for (int i=0;i<players.size();i++)
+		{
+			if (!players.get(i).isWaitingForPlayer())
 			{
 				continue;
 			}
-
-			if (assignedIndex >= waitingPlayers.size())
+			for (int j=i+1;j<players.size();j++)
 			{
-				mapping.put(i, -1);
-			}
-			else
-			{
-				waitingPlayers.get(assignedIndex).assignedPlayerNumber = i;
-				mapping.put(i, assignedIndex);
-				assignedIndex++;
+				if (!players.get(i).isConnected())
+				{
+					continue;
+				}
+				players.get(i).connected = players.get(j).connected;
+				players.get(i).connected.lobbyNumber = i;
+				players.get(j).connected = null;
+				changed = true;
 			}
 		}
-
-		// Remove extra players
-		while (waitingPlayers.size() > assignedIndex)
-		{
-			// try catch
-			waitingPlayers.remove(waitingPlayers.size() - 1).kick();
-		}
-		changed();
+		return changed;
 	}
 
-	public void setPlayerSpec(int player, PlayerSpec spec) throws IOException
+	public void setPlayerSpec(int player, PlayerSpec spec, boolean b) throws IOException
 	{
-		desiredPlayers.set(player, spec);
-		reassign();
+		if (players.get(player).isConnected() && spec.equals(PlayerSpec.Computer))
+		{
+			boolean ableToMove = false;
+			for (int i = 0; i < players.size() && !ableToMove; i++)
+			{
+				if (i == player || !players.get(i).isWaitingForPlayer())
+					continue;
+				players.get(i).connected = players.get(player).connected;
+				players.get(i).connected.lobbyNumber = i;
+				players.get(player).connected = null;
+				ableToMove = true;
+			}
+			if (!ableToMove)
+			{
+				players.get(player).kick();
+			}
+			
+		}
+		players.set(player, new PlayerPlaceHolder(spec));
+		if (b)
+			broadcastChanges();
 	}
         
         
@@ -88,19 +105,25 @@ public class Lobby
         
         
         
-        
-        
-        public boolean addPlayer(WaitingPlayer player) throws IOException
-        {
-            if (!needsPlayers())
-                return false;
-            
-            waitingPlayers.add(player);
-            reassign();
-            
-            return true;
-        }
-        
+	public boolean addPlayer(PlayerConnection player, boolean b) throws IOException
+	{
+		if (!needsPlayers())
+			return false;
+
+		boolean ableToAdd = false;
+		for (int i = 0; i < players.size() && !ableToAdd; i++)
+		{
+			if (!players.get(i).isWaitingForPlayer())
+				continue;
+			players.get(i).connected = player;
+			players.get(i).connected.lobbyNumber = i;
+			ableToAdd = true;
+		}
+
+		if (b)
+			broadcastChanges();
+		return true;
+	}
         
         
         
@@ -113,22 +136,28 @@ public class Lobby
         
         public boolean needsPlayers()
         {
-            int desired = getDesiredHumanPlayers();
-            int have    = waitingPlayers.size();
-            return have < desired;
+        	for (PlayerPlaceHolder p : players)
+        		if (p.isWaitingForPlayer())
+        			return true;
+        	return false;
         }
         
-        public int getDesiredHumanPlayers()
+        public boolean allAreReady()
         {
-            int count = 0;
-            for (PlayerSpec spec : desiredPlayers)
-                if (spec.equals(PlayerSpec.HumanPlayer))
-                    count++;
-            return count;
+        	for (PlayerPlaceHolder p : players)
+        		if (!p.isReady())
+        			return false;
+        	return true;
         }
-        
-        
-        
+
+	public int countDesiredHumanPlayers()
+	{
+		int count = 0;
+		for (PlayerPlaceHolder p : players)
+			if (p.isWaitingForPlayer())
+				count++;
+		return count;
+	}
         
         
         
@@ -138,46 +167,75 @@ public class Lobby
 		LobbyInfo info = new LobbyInfo();
 		info.id = id;
 		info.options = new GameOptions(options);
-		info.players = new PlayerInfo[desiredPlayers.size()];
-		info.allReady = true;
+		info.players = new PlayerInfo[players.size()];
+		info.allReady = allAreReady();
 		
-		for (int i = 0; i < desiredPlayers.size(); i++)
+		for (int i = 0; i < players.size(); i++)
 		{
-			info.players[i] = new PlayerInfo();
-			info.players[i].playerNumber = i;
-			if (!desiredPlayers.get(i).equals(PlayerSpec.HumanPlayer))
-			{
-				info.players[i].name = "Computer";
-				info.players[i].status = "ready";
-				info.players[i].type = PlayerSpec.Computer;
-//				info.players[i].playerNumber = -1;
-				continue;
-			}
-
-			int waitingIndex = mapping.get(i);
-			if (waitingIndex < 0)
-			{
-				info.players[i].name = "empty";
-				info.players[i].status = "waiting";
-				info.players[i].type = PlayerSpec.HumanPlayer;
-//				info.players[i].playerNumber = -1;
-				info.allReady = false;
-				break;
-			}
-
-			WaitingPlayer wp = waitingPlayers.get(waitingIndex);
-			info.players[i].name = wp.getHostInfo();
-			info.allReady &= wp.ready;
-			info.players[i].status = wp.ready ? "Ready" : "Not ready";
-			info.players[i].type = PlayerSpec.HumanPlayer;
-//			info.players[i].playerNumber = wp.assignedPlayerNumber;
+			info.players[i] = new PlayerInfo(players.get(i), i);
 		}
 
 		return info;
 	}
 
+	/*
+	 * This should be combined with the InGamePlayer somehow...
+	 */
+	public static final class PlayerPlaceHolder
+	{
+		public PlayerSpec spec;
+		public PlayerConnection connected = null;
+		// hack to be here
+		public int playerNumber = -1;
+		
+		public PlayerPlaceHolder(PlayerSpec spec2)
+		{
+			this.spec = spec2;
+		}
+
+		public boolean isReady()
+		{
+			switch (spec)
+			{
+			case HumanPlayer:
+				return connected != null && connected.ready;
+			case Computer:
+				return true;
+			default:
+				throw new RuntimeException("Not implemented.");
+			}
+		}
+
+		public PlayerPlaceHolder()
+		{
+			this(PlayerSpec.HumanPlayer);
+		}
+
+		public boolean isWaitingForPlayer()
+		{
+			return spec.equals(PlayerSpec.HumanPlayer) && !isConnected();
+		}
+
+		public void kick()
+		{
+			if (isConnected())
+				connected.kick();
+		}
+
+		public boolean isConnected()
+		{
+			return spec.equals(PlayerSpec.HumanPlayer) && connected != null;
+		}
+		
+		@Override
+		public String toString()
+		{
+			return spec.name();
+		}
+		
+	}
 	// This is a serializable version...
-	public static final class LobbyInfo
+	public static final class LobbyInfo implements Jsonable
 	{
 		public boolean allReady;
 		public GameOptions options;
@@ -196,8 +254,12 @@ public class Lobby
 					throw new RuntimeException("Unexpected.");
 
 				String currentName = parser.getCurrentName();
-				switch (parser.nextToken())
+				System.out.println("Parsing " + currentName);
+				switch (next = parser.nextToken())
 				{
+				case VALUE_NULL:
+					System.out.println("Value was null for " + currentName + " in lobby info");
+					break;
 				case VALUE_FALSE:
 					switch (currentName)
 					{
@@ -271,11 +333,12 @@ public class Lobby
 					}
 					break;
 				default:
-					throw new RuntimeException("Unexpected.");
+					throw new RuntimeException("Unexpected: " + next);
 				}
 			}
 		}
 
+		@Override
 		public void write(JsonGenerator writer) throws IOException
 		{
 			writer.writeStartObject();
@@ -287,7 +350,7 @@ public class Lobby
 			writer.writeFieldName("players");
 			writer.writeStartArray();
 			for (PlayerInfo player : players)
-				player.print(writer);
+				player.write(writer);
 			writer.writeEndArray();
 			writer.writeEndObject();
 		}
@@ -303,15 +366,17 @@ public class Lobby
 		}
 	}
 
-	public void changed() throws IOException
+	public void broadcastChanges() throws IOException
 	{
-		for (WaitingPlayer player : waitingPlayers)
+		for (PlayerPlaceHolder player : players)
 		{
-			player.updateLobby();
+			if (player.isConnected())
+				player.connected.updateLobby();
 		}
+		server.lobbyChanged(this);
 	}
 
-	public void performAction(UpdateAction action, int playerNumber, WaitingPlayer player) throws IOException
+	public void performAction(UpdateAction action, int playerNumber, PlayerConnection player) throws IOException
 	{
 		if (!player.admin)
 		{
@@ -321,15 +386,73 @@ public class Lobby
 		{
 		case Kick:
 			player.kick();
+			players.get(playerNumber).connected = null;
 			break;
 		case SetComputer:
-			desiredPlayers.set(playerNumber, PlayerSpec.Computer);
-			reassign();
+			setPlayerSpec(playerNumber, PlayerSpec.Computer, true);
 			break;
 		case SetHuman:
-			desiredPlayers.set(playerNumber, PlayerSpec.HumanPlayer);
-			reassign();
+			setPlayerSpec(playerNumber, PlayerSpec.HumanPlayer, true);
 			break;
+		default:
+			throw new RuntimeException("not implemented.");
 		}
+	}
+
+	public void setOptions(PlayerConnection player, GameOptions options2) throws IOException
+	{
+		if (!player.equals(host))
+			return;
+		this.options = options2;
+		setNumPlayers(options.numberOfPlayers, true);
+	}
+	
+	
+
+	public void startGame() throws IOException
+	{
+		Game game = new Game(options);
+		server.migrateToGame(this, game);
+		for (PlayerPlaceHolder player : players)
+		{
+			switch (player.spec)
+			{
+			case HumanPlayer:
+				if (player.connected == null)
+					throw new RuntimeException("bad state.");
+				player.playerNumber = game.add(player.connected);
+				player.connected.game = game;
+				break;
+			case Computer:
+				player.playerNumber = game.add(new ComputerAI(game));
+				break;
+			default:
+				throw new RuntimeException("not implemented.");
+			}
+		}
+		
+		LobbyInfo info = getInfo();
+
+		server.migrateToGame(this, game);
+
+		for (PlayerPlaceHolder player : players)
+		{
+			switch (player.spec)
+			{
+			case HumanPlayer:
+				if (player.connected == null)
+					throw new RuntimeException("bad state.");
+				// shoudl be a different type of game message...
+				player.connected.connection.sendMessageAndFlush(new LaunchGame(player.playerNumber, info));
+				break;
+			case Computer:
+				break;
+			default:
+				throw new RuntimeException("not implemented.");
+			}
+		}
+		
+		game.broadCast();
+		game.launchComputerPlayers();
 	}
 }

@@ -1,12 +1,8 @@
 package org.hallock.tfe.cmn.util;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-
-import org.apache.commons.io.output.TeeOutputStream;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -31,8 +27,8 @@ public class Json
 	
 	public static JsonGenerator createUnopenedGenerator(OutputStream output) throws IOException
 	{
-		new File("output/").mkdirs();
-		output = new TeeOutputStream(output, new FileOutputStream(new File("output/messagesList_" + System.currentTimeMillis() + ".json")));
+//		new File("output/").mkdirs();
+//		output = new TeeOutputStream(output, new FileOutputStream(new File("output/messagesList_" + System.currentTimeMillis() + ".json")));
 		
 		JsonGenerator createGenerator = factory.createGenerator(output);
 		createGenerator.setPrettyPrinter(new DefaultPrettyPrinter());

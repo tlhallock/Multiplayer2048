@@ -4,17 +4,29 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import org.hallock.tfe.cmn.util.Json;
-import org.hallock.tfe.dsktp.gui.LSJoinLobby;
+import org.hallock.tfe.cmn.util.Jsonable;
+import org.hallock.tfe.msg.g.PlayerAction;
+import org.hallock.tfe.msg.gc.LaunchGame;
+import org.hallock.tfe.msg.gv.StateChanged;
+import org.hallock.tfe.msg.lc.LobbiesList;
+import org.hallock.tfe.msg.lc.LobbyInfoMessage;
+import org.hallock.tfe.msg.ls.Launch;
+import org.hallock.tfe.msg.ls.Ready;
+import org.hallock.tfe.msg.ls.Refresh;
+import org.hallock.tfe.msg.ls.UpdateOptions;
+import org.hallock.tfe.msg.ls.UpdatePlayer;
+import org.hallock.tfe.msg.svr.ListLobbies;
+import org.hallock.tfe.msg.svr.SCreateLobby;
+import org.hallock.tfe.msg.svr.SJoinLobby;
+import org.hallock.tfe.msg.svr.SetPlayerInfo;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
-public abstract class Message
+public abstract class Message implements Jsonable
 {
 	public static final String TYPE_FIELD = "type";
-
-	public abstract void write(JsonGenerator generator) throws IOException;
 	
 	public static Message parse(JsonParser parser) throws IOException
 	{
@@ -42,38 +54,47 @@ public abstract class Message
 		{
 			throw new RuntimeException("Unexpected.");
 		}
+		
+		
 		String next = parser.getValueAsString();
 		switch (next)
 		{
-		case GCGameStateChanged.TYPE:
-			return new GCGameStateChanged(parser);
-		case GSPlayerAction.TYPE:
-			return new GSPlayerAction(parser);
+		case StateChanged.TYPE:
+			return new StateChanged(parser);
+			
+		case PlayerAction.TYPE:
+			return new PlayerAction(parser);
 			
 			
 			
-		case LCLobbiesListMessage.TYPE:
-			return new LCLobbiesListMessage(parser);
-		case LCLobbyChanged.TYPE:
-			return new LCLobbyChanged(parser);
-		case LCLaunchGame.TYPE:
-			return new LCLaunchGame(parser);
-		case LSListLobbiesMessage.TYPE:
-			return new LSListLobbiesMessage(parser);
-		case LSCreateLobby.TYPE:
-			return new LSCreateLobby(parser);
-		case LSRefreshMessage.TYPE:
-			return new LSRefreshMessage(parser);
-		case LSReadyMessage.TYPE:
-			return new LSReadyMessage(parser);
-		case LSUpdateOptions.TYPE:
-			return new LSUpdateOptions(parser);
-		case LSUpdatePlayer.TYPE:
-			return new LSUpdatePlayer(parser);
-		case LSJoinLobby.TYPE:
-			return new LSJoinLobby(parser);
-		case LSLaunch.TYPE:
-			return new LSLaunch(parser);
+		case LobbiesList.TYPE:
+			return new LobbiesList(parser);
+		case LobbyInfoMessage.TYPE:
+			return new LobbyInfoMessage(parser);
+			
+		case LaunchGame.TYPE:
+			return new LaunchGame(parser);
+			
+		case ListLobbies.TYPE:
+			return new ListLobbies(parser);
+		case SCreateLobby.TYPE:
+			return new SCreateLobby(parser);
+		case Refresh.TYPE:
+			return new Refresh(parser);
+		case Ready.TYPE:
+			return new Ready(parser);
+		case UpdateOptions.TYPE:
+			return new UpdateOptions(parser);
+		case UpdatePlayer.TYPE:
+			return new UpdatePlayer(parser);
+		case SJoinLobby.TYPE:
+			return new SJoinLobby(parser);
+		case Launch.TYPE:
+			return new Launch(parser);
+			
+			
+		case SetPlayerInfo.TYPE:
+			return new SetPlayerInfo(parser);
 		default:
 			throw new RuntimeException("Unrecognized type: " + next);
 		}
@@ -86,12 +107,12 @@ public abstract class Message
 		try (JsonGenerator generator = Json.createUnopenedGenerator(output);)
 		{
 			write(generator);
-			return new String(output.toByteArray());
 		}
 		catch (IOException e)
 		{
 			e.printStackTrace();
 			return "error";
 		}
+		return new String(output.toByteArray());
 	}
 }

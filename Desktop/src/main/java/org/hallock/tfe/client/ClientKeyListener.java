@@ -6,7 +6,7 @@ import java.io.IOException;
 
 import org.hallock.tfe.cmn.game.PossiblePlayerActions;
 import org.hallock.tfe.cmn.util.Connection;
-import org.hallock.tfe.msg.GSPlayerAction;
+import org.hallock.tfe.msg.g.PlayerAction;
 
 public class ClientKeyListener implements KeyListener
 {
@@ -25,7 +25,7 @@ public class ClientKeyListener implements KeyListener
 		case KeyEvent.VK_LEFT:
 			try
 			{
-				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Left));
+				connection.sendMessageAndFlush(new PlayerAction(PossiblePlayerActions.Left));
 			}
 			catch (IOException e)
 			{
@@ -35,7 +35,7 @@ public class ClientKeyListener implements KeyListener
 		case KeyEvent.VK_RIGHT:
 			try
 			{
-				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Right));
+				connection.sendMessageAndFlush(new PlayerAction(PossiblePlayerActions.Right));
 			}
 			catch (IOException e)
 			{
@@ -45,7 +45,7 @@ public class ClientKeyListener implements KeyListener
 		case KeyEvent.VK_UP:
 			try
 			{
-				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Up));
+				connection.sendMessageAndFlush(new PlayerAction(PossiblePlayerActions.Up));
 			}
 			catch (IOException e4)
 			{
@@ -55,7 +55,7 @@ public class ClientKeyListener implements KeyListener
 		case KeyEvent.VK_DOWN:
 			try
 			{
-				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Down));
+				connection.sendMessageAndFlush(new PlayerAction(PossiblePlayerActions.Down));
 			}
 			catch (IOException e3)
 			{
@@ -65,7 +65,7 @@ public class ClientKeyListener implements KeyListener
 		case KeyEvent.VK_R:
 			try
 			{
-				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Redo));
+				connection.sendMessageAndFlush(new PlayerAction(PossiblePlayerActions.Redo));
 			}
 			catch (IOException e2)
 			{
@@ -75,7 +75,7 @@ public class ClientKeyListener implements KeyListener
 		case KeyEvent.VK_Z:
 			try
 			{
-				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Undo));
+				connection.sendMessageAndFlush(new PlayerAction(PossiblePlayerActions.Undo));
 			}
 			catch (IOException e1)
 			{
@@ -86,7 +86,7 @@ public class ClientKeyListener implements KeyListener
 		case KeyEvent.VK_Q:
 			try
 			{
-				connection.sendMessageAndFlush(new GSPlayerAction(PossiblePlayerActions.Quit));
+				connection.sendMessageAndFlush(new PlayerAction(PossiblePlayerActions.Quit));
 			}
 			catch (IOException e)
 			{

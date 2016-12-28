@@ -8,14 +8,16 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Scanner;
 
+import org.hallock.tfe.cmn.game.TileChanges.TileChange;
 import org.hallock.tfe.cmn.sys.Constants;
+import org.hallock.tfe.cmn.util.Jsonable;
 import org.hallock.tfe.cmn.util.Utils;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
-public class TileBoard
+public class TileBoard  implements Jsonable
 {
 	int[][] tiles;
 
@@ -89,6 +91,7 @@ public class TileBoard
 		}
 	}
 
+	@Override
 	public void write(JsonGenerator writer) throws IOException
 	{
 		writer.writeStartObject();
@@ -116,22 +119,29 @@ public class TileBoard
 		return getPossibles().isEmpty();
 	}
 
-	public boolean randomlyFill(int numToFill)
+	public void initialize(GameOptions options)
+	{
+		randomlyFill(options, new TileChanges(), options.startingTiles);
+	}
+
+	public void fillTurn(GameOptions options, TileChanges changes)
+	{
+		randomlyFill(options, changes, options.numberOfNewTilesPerTurn);
+	}
+	private void randomlyFill(GameOptions options, TileChanges changes, int num)
 	{
 		LinkedList<Point> possibles = getPossibles();
-		if (possibles.size() < numToFill)
-		{
-			return false;
-		}
-
 		Collections.shuffle(possibles, Constants.random);
 
-		while (numToFill-- > 0)
+		for (int i = 0; i < num; i++)
 		{
-			Point removeFirst = possibles.removeFirst();
-			tiles[removeFirst.x][removeFirst.y] = 2;
+			if (possibles.isEmpty())
+				return;
+			Point nextLoc = possibles.removeFirst();
+			int added = options.newTileDistribution.sample();
+			tiles[nextLoc.x][nextLoc.y] = added;
+			changes.add(new TileChange(added, nextLoc.x, nextLoc.y, true));
 		}
-		return true;
 	}
 
 	private LinkedList<Point> getPossibles()
@@ -161,18 +171,56 @@ public class TileBoard
 		return builder.toString();
 	}
 
-	private boolean pushRow(int r, int to, int from)
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+	private void increment(int r, int first)
+	{
+		tiles[r][first]++;
+	}
+	private void pushRow(int r, int to, int from, TileChanges changes)
 	{
 		if (to == from)
-			return false;
+		{
+			changes.add(new TileChange(tiles[r][from], r, from, false));
+			return;
+		}
+		changes.add(new TileChange(
+				tiles[r][from],
+				r, from,
+				r, to));
 		tiles[r][to] = tiles[r][from];
 		tiles[r][from] = 0;
-		return true;
+	}
+	private void pushRow(int r, int to, int from1, int from2, TileChanges changes)
+	{
+		int old = tiles[r][from1];
+		increment(r, from1);
+		changes.add(new TileChange(
+				old,
+				r, from1,
+				r, from2,
+				tiles[r][from1],
+				r, to));
+		tiles[r][from2] = 0;
+		if (to == from1)
+			return;
+		tiles[r][to] = tiles[r][from1];
+		tiles[r][from1] = 0;
 	}
 
-	public boolean left()
+	public TileChanges left(TileChanges changes)
 	{
-		boolean modified = false;
 		for (int r = 0; r < tiles.length; r++)
 		{
 			int next = 0;
@@ -185,35 +233,26 @@ public class TileBoard
 					;
 				if (second >= tiles[r].length)
 				{
-					modified |= pushRow(r, next++, first);
+					pushRow(r, next++, first, changes);
 					break;
 				}
 				if (tiles[r][second] == tiles[r][first])
 				{
-					increment(r, first);
-					tiles[r][second] = 0;
-					pushRow(r, next++, first);
+					pushRow(r, next++, first, second, changes);
 					first = second;
-					modified = true;
 				}
 				else
 				{
-					modified |= pushRow(r, next++, first);
+					pushRow(r, next++, first, changes);
 					first = second - 1;
 				}
 			}
 		}
-		return modified;
+		return changes;
 	}
 
-	private void increment(int r, int first)
+	public TileChanges right(TileChanges changes)
 	{
-		tiles[r][first]++;
-	}
-
-	public boolean right()
-	{
-		boolean modified = false;
 		for (int r = tiles.length - 1; r >= 0; r--)
 		{
 			int next = tiles[r].length - 1;
@@ -226,41 +265,61 @@ public class TileBoard
 					;
 				if (second < 0)
 				{
-					modified |= pushRow(r, next--, first);
+					pushRow(r, next--, first, changes);
 					break;
 				}
 				if (tiles[r][second] == tiles[r][first])
 				{
-					increment(r, first);
-					tiles[r][second] = 0;
-					pushRow(r, next--, first);
+					pushRow(r, next--, first, second, changes);
 					first = second;
-					modified = true;
 				}
 				else
 				{
-					modified |= pushRow(r, next--, first);
+					pushRow(r, next--, first, changes);
 					first = second + 1;
 				}
 			}
 		}
-		return modified;
+		return changes;
 	}
 
-	private boolean pushCol(int c, int to, int from)
+	
+	
+	
+
+	private void pushCol(int c, int to, int from, TileChanges changes)
 	{
 		if (to == from)
-			return false;
+		{
+			changes.add(new TileChange(tiles[from][c], from, c, false));
+			return;
+		}
+		changes.add(new TileChange(
+				tiles[from][c],
+				from, c,
+				to, c));
 		tiles[to][c] = tiles[from][c];
 		tiles[from][c] = 0;
-		return true;
 	}
-
-	public boolean up()
+	private void pushCol(int c, int to, int from1, int from2, TileChanges changes)
 	{
-		if (tiles.length == 0)
-			return false;
-		boolean modified = false;
+		int old = tiles[from1][c];
+		increment(from1, c);
+		changes.add(new TileChange(
+				old,
+				from1, c,
+				from2, c,
+				tiles[from1][c],
+				to, c));
+		tiles[from2][c] = 0;
+		if (to == from1)
+			return;
+		tiles[to][c] = tiles[from1][c];
+		tiles[from1][c] = 0;
+	}
+	
+	public TileChanges up(TileChanges changes)
+	{
 		for (int c = 0; c < tiles[0].length; c++)
 		{
 			int next = 0;
@@ -273,32 +332,26 @@ public class TileBoard
 					;
 				if (second >= tiles.length)
 				{
-					modified |= pushCol(c, next++, first);
+					pushCol(c, next++, first, changes);
 					break;
 				}
 				if (tiles[second][c] == tiles[first][c])
 				{
-					increment(first, c);
-					tiles[second][c] = 0;
-					pushCol(c, next++, first);
+					pushCol(c, next++, first, second, changes);
 					first = second;
-					modified = true;
 				}
 				else
 				{
-					modified |= pushCol(c, next++, first);
+					pushCol(c, next++, first, changes);
 					first = second - 1;
 				}
 			}
 		}
-		return modified;
+		return changes;
 	}
 
-	public boolean down()
+	public TileChanges down(TileChanges changes)
 	{
-		if (tiles.length == 0)
-			return false;
-		boolean modified = false;
 		for (int c = tiles[0].length - 1; c >= 0; c--)
 		{
 			int next = tiles.length - 1;
@@ -311,25 +364,22 @@ public class TileBoard
 					;
 				if (second < 0)
 				{
-					modified |= pushCol(c, next--, first);
+					pushCol(c, next--, first, changes);
 					break;
 				}
 				if (tiles[second][c] == tiles[first][c])
 				{
-					increment(first, c);
-					tiles[second][c] = 0;
-					pushCol(c, next--, first);
+					pushCol(c, next--, first, second, changes);
 					first = second;
-					modified = true;
 				}
 				else
 				{
-					modified |= pushCol(c, next--, first);
+					pushCol(c, next--, first, changes);
 					first = second + 1;
 				}
 			}
 		}
-		return modified;
+		return changes;
 	}
 
 	public void zero()

@@ -7,6 +7,9 @@ package org.hallock.tfe.serve;
 
 import java.io.IOException;
 
+import org.hallock.tfe.cmn.util.Jsonable;
+import org.hallock.tfe.serve.Lobby.PlayerPlaceHolder;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -15,14 +18,47 @@ import com.fasterxml.jackson.core.JsonToken;
  *
  * @author trever
  */
-public class PlayerInfo
+public class PlayerInfo implements Jsonable
 {
 	public PlayerSpec type;
 	public String name;
 	public String status;
-	public int playerNumber;
+	public int lobbyNumber;
+	public int gameNumber;
+	public boolean admin;
 
-	public PlayerInfo() {}
+	public PlayerInfo(PlayerPlaceHolder p, int idx)
+	{
+		type = p.spec;
+		lobbyNumber = idx;
+		gameNumber = p.playerNumber;
+		
+		switch (p.spec)
+		{
+		case Computer:
+			name = "Computer";
+			status = "ready";
+			admin = false;
+			break;
+		case HumanPlayer:
+			if (p.connected == null)
+			{
+				name = "empty";
+				status = "waiting";
+				admin = false;
+			}
+			else
+			{
+				name = p.connected.playerName;
+				status = p.connected.ready ? "ready" : "not ready";
+				admin = p.connected.admin;
+			}
+			break;
+		default:
+			throw new RuntimeException("Uh oh");
+
+		}
+	}
 
 	public PlayerInfo(JsonParser parser) throws IOException
 	{
@@ -38,8 +74,11 @@ public class PlayerInfo
 			case VALUE_NUMBER_INT:
 				switch (currentName)
 				{
-				case "number":
-					playerNumber = parser.getIntValue();
+				case "lnumber":
+					lobbyNumber = parser.getIntValue();
+					break;
+				case "gnumber":
+					gameNumber = parser.getIntValue();
 					break;
 				default:
 					throw new RuntimeException("Unexpected.");
@@ -61,19 +100,42 @@ public class PlayerInfo
 					throw new RuntimeException("Unexpected.");
 				}
 				break;
+			case VALUE_FALSE:
+				switch (currentName)
+				{
+				case "admin":
+					admin = false;
+					break;
+				default:
+					throw new RuntimeException("Unexpected.");
+				}
+				break;
+			case VALUE_TRUE:
+				switch (currentName)
+				{
+				case "admin":
+					admin = true;
+					break;
+				default:
+					throw new RuntimeException("Unexpected.");
+				}
+				break;
 			default:
 				throw new RuntimeException("Unexpected.");
 			}
 		}
 	}
 
-	public void print(JsonGenerator writer) throws IOException
+	@Override
+	public void write(JsonGenerator writer) throws IOException
 	{
 		writer.writeStartObject();
 		writer.writeStringField("type", type.name());
 		writer.writeStringField("name", name);
 		writer.writeStringField("status", status);
-		writer.writeNumberField("number", playerNumber);
+		writer.writeNumberField("lnumber", lobbyNumber);
+		writer.writeNumberField("gnumber", gameNumber);
+		writer.writeBooleanField("admin", admin);
 		writer.writeEndObject();
 	}
 }
