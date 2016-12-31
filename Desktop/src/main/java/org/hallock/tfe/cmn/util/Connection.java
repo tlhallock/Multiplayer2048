@@ -3,7 +3,6 @@ package org.hallock.tfe.cmn.util;
 import java.io.IOException;
 import java.net.Socket;
 
-import org.hallock.tfe.cmn.sys.Registry;
 import org.hallock.tfe.msg.Message;
 
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -33,8 +32,8 @@ public class Connection
 	}
 	public void sendMessageWithoutFlushing(Message message) throws IOException
 	{
-		System.out.println("Sending message " + message);
-		Registry.getLogger().log("Sending message " + message);
+//		System.out.println("Sending message " + message);
+//		Registry.getLogger().log("Sending message " + message);
 		message.write(generator);
 	}
 	

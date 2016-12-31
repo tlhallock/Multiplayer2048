@@ -7,8 +7,8 @@ package org.hallock.tfe.dsktp.gui;
 
 import org.hallock.tfe.client.ClientConnection;
 import org.hallock.tfe.msg.ls.UpdatePlayer;
-import org.hallock.tfe.serve.PlayerInfo;
 import org.hallock.tfe.serve.PlayerSpec;
+import org.hallock.tfe.serve.WaitingPlayerInfo;
 
 /**
  *
@@ -17,12 +17,12 @@ import org.hallock.tfe.serve.PlayerSpec;
 public class DesktopLobbyPlayerViewer extends javax.swing.JPanel {
     
 	ClientConnection connection;
-        PlayerInfo player;
+        WaitingPlayerInfo player;
     /**
      * Creates new form LobbyPlayer
- * @param isAdmin 
+ * @param isHost 
      */
-    public DesktopLobbyPlayerViewer(PlayerInfo player, ClientConnection client, boolean isAdmin) {
+    public DesktopLobbyPlayerViewer(WaitingPlayerInfo player, ClientConnection client, boolean isHost) {
         this.player = player;
         this.connection = client;
         initComponents();
@@ -39,8 +39,8 @@ public class DesktopLobbyPlayerViewer extends javax.swing.JPanel {
         }
         statusLabel.setText(player.status);
         this.infoLabel.setText(player.name);
-        jComboBox1.setEnabled(isAdmin);
-        jButton1.setEnabled(isAdmin && player.type.equals(PlayerSpec.HumanPlayer));
+        jComboBox1.setEnabled(!player.isHost && isHost);
+        jButton1.setEnabled(!player.isHost && isHost && player.type.equals(PlayerSpec.HumanPlayer));
     }
 
 /**

@@ -21,7 +21,7 @@ public class Refresh extends LobbyMessage
 	@Override
 	public void perform(Lobby server, PlayerConnection player) throws IOException
 	{
-		player.updateLobby();
+		server.refresh(player);
 	}
 
 	@Override

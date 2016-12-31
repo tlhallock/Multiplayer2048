@@ -19,6 +19,9 @@ import org.hallock.tfe.msg.g.GameMessage;
 import org.hallock.tfe.msg.lc.LobbiesList;
 import org.hallock.tfe.msg.ls.LobbyMessage;
 import org.hallock.tfe.msg.svr.ServerMessage;
+import org.hallock.tfe.serve.PlayerConnection.PlayerRole;
+import org.hallock.tfe.serve.PlayerConnection.PlayerRole.GameRole;
+import org.hallock.tfe.serve.PlayerConnection.PlayerRole.LobbyRole;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -28,6 +31,7 @@ public class GameServer
 	ExecutorService newFixedThreadPool = Executors.newFixedThreadPool(2);
 	LinkedList<PlayerConnection> connectedPlayers = new LinkedList<>();
 	HashMap<String, Lobby> lobbies = new HashMap<>();
+	HashMap<String, Boolean> availableLobbies = new HashMap<>();
 	LinkedList<Game> games = new LinkedList<>();
 	
 
@@ -44,19 +48,21 @@ public class GameServer
 		this.socket = socket;
 	}
         
-
 	public void lobbyChanged(Lobby lobby) throws IOException
 	{
-		if (!lobby.needsPlayers())
-			return;
-		listLobbies(connectedPlayers);
+		Boolean old = availableLobbies.get(lobby.id);
+		if (old == null || old != lobby.needsPlayers())
+		{
+			listLobbies(connectedPlayers, false);
+			availableLobbies.put(lobby.id, lobby.needsPlayers());
+		}
 	}
 
         public void listLobbies(PlayerConnection connectedPlayer) throws IOException
         {
-        	listLobbies(Collections.singleton(connectedPlayer));
+        	listLobbies(Collections.singleton(connectedPlayer), false);
         }
-        public void listLobbies(Collection<PlayerConnection> connectedPlayers2) throws IOException
+        public void listLobbies(Collection<PlayerConnection> connectedPlayers2, boolean fail) throws IOException
         {
         	LobbiesList msg = new LobbiesList();
         	
@@ -67,12 +73,22 @@ public class GameServer
                         continue;
                     }
                     
-                    msg.foundLobby(lobby.getInfo());
+                    msg.foundLobby(lobby.createInfo());
                 }
                 
                 for (PlayerConnection c : connectedPlayers2)
                 {
-                	c.connection.sendMessageAndFlush(msg);
+                	try
+                	{
+                		c.connection.sendMessageAndFlush(msg);
+                	}
+                	catch (IOException t)
+                	{
+                		if (fail)
+                			throw t;
+                		else
+                			t.printStackTrace();
+                	}
                 }
         }
         
@@ -84,12 +100,9 @@ public class GameServer
         		String id = Utils.createRandomString(50);
                 	lobby.id = id;
         	} while (lobbies.containsKey(lobby.id));
-        	lobby.options = new GameOptions();
+        	lobby.options = new GameOptions(ServerSettings.DEFAULT_GAME_OPTIONS);
         	lobby.setNumPlayers(lobby.options.numberOfPlayers, false);
-        	lobby.host = player;
-        	player.lobby = lobby;
-        	player.admin = true;
-        	lobby.addPlayer(player, false);
+        	lobby.addPlayer(player, false, true);
         	lobbies.put(lobby.id, lobby);
         	lobby.broadcastChanges();
         }
@@ -100,17 +113,21 @@ public class GameServer
         	if (lobby == null)
         		return;
         	connectedPlayers.remove(player);
-        	player.lobby = lobby;
-        	player.admin = false;
-        	lobby.addPlayer(player, true);
+        	lobby.addPlayer(player, true, false);
 	}
 
-	public void migrateToGame(Lobby lobby, Game game)
+	public void migrateToGame(Lobby lobby, Game game) throws IOException
 	{
         	lobbies.remove(lobby.id);
         	games.add(game);
+        	availableLobbies.remove(lobby.id);
+        	listLobbies(connectedPlayers, false);
 	}
-        
+
+	public void gameFinished(Game game)
+	{
+		games.remove(game);
+	}
         
         
         
@@ -165,20 +182,23 @@ public class GameServer
 			PlayerConnection player = new PlayerConnection(connection);
 			connection.readOpen();
 			connectedPlayers.add(player);
+			player.setWaiting();
+			
+			listLobbies(player);
 
 			Message message;
 			while ((message = connection.readMessage()) != null)
 			{
 				// synchronize on player
-				if (message instanceof LobbyMessage && player.lobby != null)
+				if (message instanceof LobbyMessage && PlayerRole.isInLobby(player))
 				{
 					LobbyMessage msg = (LobbyMessage) message;
-					msg.perform(player.lobby, player);
+					msg.perform(((LobbyRole) player.getRole()).getLobby(), player);
 				}
-				else if (message instanceof GameMessage && player.game != null)
+				else if (message instanceof GameMessage && PlayerRole.isInGame(player))
 				{
 					GameMessage msg = (GameMessage) message;
-					msg.perform(player.game, player);
+					msg.perform(((GameRole) player.getRole()).getGame(), player);
 				}
 				else if (message instanceof ServerMessage)
 				{
@@ -203,7 +223,4 @@ public class GameServer
 	{
 		ensureSpawned();
 	}
-
-
-
 }

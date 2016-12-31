@@ -40,8 +40,15 @@ public class DiscreteDistribution implements Jsonable
 		sum = -1;
 	}
 
-	public DiscreteDistribution()
+	public DiscreteDistribution() {}
+
+	public DiscreteDistribution(double[] probs)
 	{
+		for (int i = 0; i < probs.length; i++)
+		{
+			outcomes.add(i);
+			probabilities.add(probs[i]);
+		}
 	}
 	
 	public DiscreteDistribution(JsonParser parser) throws IOException
@@ -94,6 +101,33 @@ public class DiscreteDistribution implements Jsonable
 				throw new RuntimeException("Unexpected.");
 			}
 		}
+		
+		if (outcomes.size() != probabilities.size())
+		{
+			throw new RuntimeException("Invalid sizes...");
+		}
+	}
+	
+	@Override
+	public boolean equals(Object other)
+	{
+		if (!(other instanceof DiscreteDistribution))
+			return false;
+		DiscreteDistribution d = (DiscreteDistribution) other;
+		if (outcomes.size() != d.outcomes.size())
+			return false;
+		for (int i = 0; i < outcomes.size(); i++)
+		{
+			if (outcomes.get(i) != d.outcomes.get(i))
+				return false;
+			// people could change it on us :)
+			if (Math.abs(probabilities.get(i) - d.probabilities.get(i)) > 1e-6)
+			{
+				return false;
+			}
+		}
+
+		return true;
 	}
 	
 	public synchronized void add(int value, double prob)
@@ -131,7 +165,7 @@ public class DiscreteDistribution implements Jsonable
 		{
 			value -= probabilities.get(idx);
 			if (value <= 0)
-				return idx;
+				return outcomes.get(idx);
 			idx++;
 		} while (idx < probabilities.size());
 

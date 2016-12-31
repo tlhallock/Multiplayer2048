@@ -2,7 +2,9 @@ package org.hallock.tfe.cmn.game;
 
 import java.io.IOException;
 
+import org.hallock.tfe.cmn.svr.EvilActionsAwarder;
 import org.hallock.tfe.cmn.util.DiscreteDistribution;
+import org.hallock.tfe.serve.PointsCounter;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -17,6 +19,8 @@ public class GameOptions
 	public int numRows = 6;
 	public int numCols = 6;
         public int numberOfPlayers = 2;
+        public long aiWait = 500;
+        public boolean evilActionsRemoveHistory = true;
         
         public GameOptions() {}
         
@@ -37,7 +41,18 @@ public class GameOptions
             this.numCols = options.numCols;
             this.numRows = options.numRows;
             this.numberOfPlayers = options.numberOfPlayers;
+            this.evilActionsRemoveHistory = options.evilActionsRemoveHistory;
+            this.aiWait = options.aiWait;
         }
+
+	public PointsCounter createPoints()
+	{
+		return new PointsCounter();
+	}
+	public EvilActionsAwarder createAwarder()
+	{
+		return new EvilActionsAwarder();
+	}
         
         public GameOptions(JsonParser parser) throws IOException
         {
@@ -56,6 +71,9 @@ public class GameOptions
 				case "skip":
 					skipIsAnOption = false;
 					break;
+				case "evilActionsRemoveHistory":
+					evilActionsRemoveHistory = false;
+					break;
 				default:
 					throw new RuntimeException("Unexpected.");
 				}
@@ -65,6 +83,9 @@ public class GameOptions
 				{
 				case "skip":
 					skipIsAnOption = true;
+					break;
+				case "evilActionsRemoveHistory":
+					evilActionsRemoveHistory = true;
 					break;
 				default:
 					throw new RuntimeException("Unexpected.");
@@ -87,6 +108,9 @@ public class GameOptions
 					break;
 				case "nplayers":
 					numberOfPlayers = parser.getNumberValue().intValue();
+					break;
+				case "aiwait":
+					aiWait = parser.getNumberValue().longValue();
 					break;
 				}
 				break;
@@ -113,8 +137,10 @@ public class GameOptions
         	generator.writeNumberField("newTilesPerTurn", numberOfNewTilesPerTurn);
         	generator.writeNumberField("numberStartingTiles", startingTiles);
         	generator.writeNumberField("nrows", numRows);
+        	generator.writeBooleanField("evilActionsRemoveHistory", evilActionsRemoveHistory);
         	generator.writeNumberField("ncols", numCols);
         	generator.writeNumberField("nplayers", numberOfPlayers);
+        	generator.writeNumberField("aiwait", aiWait);
         	generator.writeFieldName("distribution");
         	newTileDistribution.write(generator);
         	generator.writeEndObject();

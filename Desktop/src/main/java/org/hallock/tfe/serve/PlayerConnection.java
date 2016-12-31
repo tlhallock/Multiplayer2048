@@ -8,39 +8,38 @@ package org.hallock.tfe.serve;
 import java.io.IOException;
 
 import org.hallock.tfe.cmn.util.Connection;
-import org.hallock.tfe.msg.lc.LobbyInfoMessage;
 
 public class PlayerConnection
 {
 	// Connection
 	Connection connection;
+	PlayerRole role;
 
 	// Player information
 	String playerName;
-
-	// Lobby information
-	Lobby lobby;
-	int lobbyNumber;
-	boolean ready;
-	boolean admin;
 	
-	// Game information
-	Game game;
-	int playerNumber = -1;
-	
-
 	public PlayerConnection(Connection connection2)
 	{
 		this.connection = connection2;
 		playerName = "Unknown";
 	}
 	
+	public void setName(String name) throws IOException
+	{
+		playerName = name;
+		getRole().nameChanged();
+	}
 	
+	public PlayerRole getRole()
+	{
+		return role;
+	}
 	
+	public void setRole(PlayerRole role)
+	{
+		this.role = role;
+	}
 	
-	
-	// information methods:
-
 	String getHostInfo()
 	{
 		return connection.getConnectionInfo();
@@ -50,52 +49,69 @@ public class PlayerConnection
 	{
 		return playerName;
 	}
-	
-	
-	
-	
-	
-	
-	
-	// Lobby methods
-	public void updateLobby() throws IOException
+
+	public void setWaiting()
 	{
-		if (lobby == null) return;
+		this.role = new PlayerRole()
+		{
+			@Override
+			public PlayerState getState()
+			{
+				return PlayerState.Waiting;
+			}
+
+			@Override
+			public void nameChanged() {}
+
+			@Override
+			public int getIndex()
+			{
+				return -1;
+			}
+		};
+	}
+	
+	
+	
+	
+	
+	
+
+	public static interface PlayerRole
+	{
+		enum PlayerState
+		{
+			Waiting,
+			InLobby,
+			InGame,
+		}
 		
-		connection.sendMessageAndFlush(new LobbyInfoMessage(
-				admin,
-				lobby.getInfo()));
-	}
-
-	public void setName(String name) throws IOException
-	{
-		if (this.playerName.equals(name))
-			return;
-		this.playerName = name;
-		if (lobby != null)
-			lobby.broadcastChanges();
-	}
-
-	void kick()
-	{
-		// send message that you are being kicked...
-	}
-
-	public void setReady(boolean ready2) throws IOException
-	{
-		if (ready == ready2)
-			return;
-		ready = ready2;
-		if (lobby != null)
-			lobby.broadcastChanges();
-	}
-
-
-
-
-
-	public int getPlayerNumber()
-	{
-		return playerNumber;
+		
+		public PlayerState getState();
+		public void nameChanged() throws IOException;
+		public int getIndex();
+		
+		public static boolean isInLobby(PlayerConnection role)
+		{
+			return role.getRole().getState().equals(PlayerState.InLobby);
+		}
+		public static boolean isInGame(PlayerConnection role)
+		{
+			return role.getRole().getState().equals(PlayerState.InGame);
+		}
+		public static boolean isWaiting(PlayerConnection role)
+		{
+			return role.getRole().getState().equals(PlayerState.Waiting);
+		}
+		
+		static interface GameRole extends PlayerRole
+		{
+			public Game getGame();
+		}
+		
+		static interface LobbyRole  extends PlayerRole
+		{
+			public Lobby getLobby();
+		}
 	}
 }

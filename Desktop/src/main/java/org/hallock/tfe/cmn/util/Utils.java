@@ -3,6 +3,7 @@ package org.hallock.tfe.cmn.util;
 import java.awt.Color;
 import java.awt.Container;
 import java.awt.GridLayout;
+import java.io.PrintStream;
 
 import javax.swing.GroupLayout.ParallelGroup;
 import javax.swing.GroupLayout.SequentialGroup;
@@ -115,4 +116,13 @@ public class Utils {
 		        	layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
 		    	            .addGroup(vgroup));
 	    }
+
+	public static void indent(PrintStream ps, int depth)
+	{
+		while (depth --> 0)
+		{
+			ps.print('\t');
+			ps.print('\t');
+		}
+	}
 }

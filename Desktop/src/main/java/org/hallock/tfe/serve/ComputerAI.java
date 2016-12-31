@@ -10,6 +10,7 @@ public class ComputerAI implements Runnable
 	
 	int number;
 	Game game;
+	boolean stop;
 	
 	private PossiblePlayerActions[] possibles = new PossiblePlayerActions[] {
 			PossiblePlayerActions.Down,
@@ -26,11 +27,11 @@ public class ComputerAI implements Runnable
 	@Override
 	public void run()
 	{
-		while (true)
+		while (!stop)
 		{
 			try
 			{
-				Thread.sleep(50);
+				Thread.sleep(ServerSettings.AI_WAIT);
 			}
 			catch (InterruptedException e)
 			{
@@ -39,7 +40,7 @@ public class ComputerAI implements Runnable
 
 			try
 			{
-				game.play(number, getNextMove());
+				game.play(number, getNextMove(), true);
 			}
 			catch (IOException e)
 			{
@@ -56,5 +57,10 @@ public class ComputerAI implements Runnable
 	public void start()
 	{
 		new Thread(this).start();
+	}
+
+	public void stop()
+	{
+		stop = true;
 	}
 }

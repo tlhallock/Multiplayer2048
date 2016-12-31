@@ -22,7 +22,7 @@ public class Launch extends LobbyMessage
 	@Override
 	public void perform(Lobby lobby, PlayerConnection player) throws IOException
 	{
-		lobby.startGame();
+		lobby.startGame(player);
 	}
 
 	@Override

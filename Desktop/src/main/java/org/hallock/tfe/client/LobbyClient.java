@@ -2,7 +2,7 @@ package org.hallock.tfe.client;
 
 import java.util.LinkedList;
 
-import org.hallock.tfe.serve.Lobby.LobbyInfo;
+import org.hallock.tfe.serve.LobbyInfo;
 
 public interface LobbyClient
 {

@@ -58,7 +58,7 @@ public class Ready extends LobbyMessage
 	@Override
 	public void perform(Lobby server, PlayerConnection player) throws IOException
 	{
-		player.setReady(ready);
+		server.playerIsReady(player, ready);
 	}
 
 	@Override

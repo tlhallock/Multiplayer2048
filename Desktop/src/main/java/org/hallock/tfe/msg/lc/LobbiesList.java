@@ -5,7 +5,7 @@ import java.util.LinkedList;
 
 import org.hallock.tfe.client.LobbyClient;
 import org.hallock.tfe.msg.Message;
-import org.hallock.tfe.serve.Lobby.LobbyInfo;
+import org.hallock.tfe.serve.LobbyInfo;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -58,7 +58,6 @@ public class LobbiesList extends LobbyClientMessage
 				throw new RuntimeException("Unexpected.");
 			}
 		}
-
 	}
 
 	public void foundLobby(LobbyInfo info)

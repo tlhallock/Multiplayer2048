@@ -1,13 +1,14 @@
 package org.hallock.tfe.msg;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import org.hallock.tfe.cmn.util.Json;
 import org.hallock.tfe.cmn.util.Jsonable;
+import org.hallock.tfe.msg.g.PlayEvilAction;
 import org.hallock.tfe.msg.g.PlayerAction;
 import org.hallock.tfe.msg.gc.LaunchGame;
+import org.hallock.tfe.msg.gv.AwardedEvilAction;
 import org.hallock.tfe.msg.gv.StateChanged;
+import org.hallock.tfe.msg.lc.Kicked;
 import org.hallock.tfe.msg.lc.LobbiesList;
 import org.hallock.tfe.msg.lc.LobbyInfoMessage;
 import org.hallock.tfe.msg.ls.Launch;
@@ -20,7 +21,6 @@ import org.hallock.tfe.msg.svr.SCreateLobby;
 import org.hallock.tfe.msg.svr.SJoinLobby;
 import org.hallock.tfe.msg.svr.SetPlayerInfo;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
@@ -71,6 +71,10 @@ public abstract class Message implements Jsonable
 			return new LobbiesList(parser);
 		case LobbyInfoMessage.TYPE:
 			return new LobbyInfoMessage(parser);
+		case Kicked.TYPE:
+			return new Kicked(parser);
+			
+			
 			
 		case LaunchGame.TYPE:
 			return new LaunchGame(parser);
@@ -95,6 +99,11 @@ public abstract class Message implements Jsonable
 			
 		case SetPlayerInfo.TYPE:
 			return new SetPlayerInfo(parser);
+			
+		case AwardedEvilAction.TYPE:
+			return new AwardedEvilAction(parser);
+		case PlayEvilAction.TYPE:
+			return new PlayEvilAction(parser);
 		default:
 			throw new RuntimeException("Unrecognized type: " + next);
 		}
@@ -103,16 +112,6 @@ public abstract class Message implements Jsonable
 	@Override
 	public String toString()
 	{
-		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		try (JsonGenerator generator = Json.createUnopenedGenerator(output);)
-		{
-			write(generator);
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace();
-			return "error";
-		}
-		return new String(output.toByteArray());
+		return Jsonable.toString(this);
 	}
 }

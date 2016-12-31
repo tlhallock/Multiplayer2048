@@ -61,6 +61,6 @@ public class PlayerAction extends GameMessage
 	@Override
 	public void perform(Game server, PlayerConnection player) throws IOException
 	{
-		server.play(player.getPlayerNumber(), swipe);
+		server.play(player.getRole().getIndex(), swipe, true);
 	}
 }

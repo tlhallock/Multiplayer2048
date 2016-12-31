@@ -4,40 +4,54 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedList;
 
+import org.hallock.tfe.serve.PointsCounter;
+
 public class History
 {
 	private static final int MAX_SIZE = 100;
 	LinkedList<Event> past = new LinkedList<>();
 	LinkedList<Event> future = new LinkedList<>();
 
-	public void updated(TileBoard newState, String message)
+	public void clear()
 	{
 		future.clear();
-		past.addFirst(new Event(newState, message));
+		past.clear();
+	}
+
+	public void updated(PlayerState state)
+	{
+		future.clear();
+		past.addFirst(new Event(state.getTileBoard(), state.getPoints()));
 		while (MAX_SIZE > 0 && past.size() > MAX_SIZE)
 		{
 			past.removeLast();
 		}
 	}
 
-	public TileBoard undo()
+	public boolean undo(PlayerState player)
 	{
 		if (past.isEmpty())
-			return null;
+			return false;
 		Event removeFirst = past.removeFirst();
 		future.addFirst(removeFirst);
 		if (past.isEmpty())
-			return null;
-		return new TileBoard(past.getFirst().state);
+			return false;
+		
+		player.setBoard(new TileBoard(past.getFirst().state));
+		player.setPoints(past.getFirst().counter);
+		return true;
 	}
 
-	public TileBoard redo()
+	public boolean redo(PlayerState player)
 	{
 		if (future.isEmpty())
-			return null;
+			return false;
 		Event removeFirst = future.removeFirst();
 		past.addFirst(removeFirst);
-		return new TileBoard(removeFirst.state);
+
+		player.setBoard(new TileBoard(removeFirst.state));
+		player.setPoints(removeFirst.counter);
+		return true;
 	}
 
 	@Override
@@ -60,13 +74,13 @@ public class History
 	private static final class Event
 	{
 		TileBoard state;
-		String message;
+		PointsCounter counter;
 		long time;
 
-		Event(TileBoard state, String message)
+		public Event(TileBoard newState, PointsCounter counter)
 		{
-			this.state = new TileBoard(state);
-			this.message = message;
+			this.state = new TileBoard(newState);
+			counter = new PointsCounter(counter);
 			time = System.currentTimeMillis();
 		}
 
@@ -76,7 +90,7 @@ public class History
 			StringBuilder builder = new StringBuilder();
 
 			builder.append(state).append('\n');
-			builder.append('"').append(message).append('"').append('\n');
+			builder.append('"').append(counter.getPoints()).append('"').append('\n');
 			builder.append(new Date(time)).append('\n');
 
 			return builder.toString();

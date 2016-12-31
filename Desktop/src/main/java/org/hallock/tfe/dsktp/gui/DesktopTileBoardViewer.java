@@ -11,17 +11,19 @@ import org.hallock.tfe.cmn.game.TileChanges;
 import org.hallock.tfe.cmn.game.TileChanges.TileChange;
 import org.hallock.tfe.cmn.sys.Animator;
 import org.hallock.tfe.cmn.util.Utils;
+import org.hallock.tfe.serve.GamePlayerInfo;
 
 public class DesktopTileBoardViewer extends JPanel {
+	private static final long ANIMATION_TIME = 500;
 	
-	private static final long ANIMATION_TIME = 250;
-	
+	int idx;
 	TileBoard state;
 	TileChanges changes;
 	int dividerSize = 5;
 	String name;
+	
 	// Should not make an animator for each one
-	Animator animator = new Animator(20, new Runnable()
+	Animator animator = new Animator(100, new Runnable()
 	{
 		@Override
 		public void run()
@@ -31,21 +33,29 @@ public class DesktopTileBoardViewer extends JPanel {
 	});
 	int currentTurn;
 	private long startAnimating;
+	private String pointsString;
 	
-	public DesktopTileBoardViewer(String name)
+	public DesktopTileBoardViewer(String name, int idx)
 	{
 		this.name = name;
+		this.idx = idx;
+	}
+	
+	public int getIndex()
+	{
+		return idx;
 	}
 
-	public void setTileBoard(TileBoard board, TileChanges changes, int newTurn)
+	public void setTileBoard(GamePlayerInfo info)
 	{
-		if (currentTurn != newTurn)
+		if (currentTurn != info.turnId)
 		{
 			startAnimating = System.currentTimeMillis();
-			currentTurn = newTurn;
+			currentTurn = info.turnId;
 		}
-		this.state = new TileBoard(board);
-		this.changes = changes;
+		this.state = new TileBoard(info.board);
+		this.changes = info.changes;
+		this.pointsString = info.points.toPlainString();
 		repaint();
 	}
 
@@ -151,9 +161,11 @@ public class DesktopTileBoardViewer extends JPanel {
 		}
 
 
-		g.setColor(Color.black);
+		g.setColor(Color.blue);
 		if (name != null)
-			g.drawString(name, w/2, h/2);
+			g.drawString(name, 20, 20);
+		
+		g.drawString(pointsString, 20, 40);
 	}
 
 	private void drawTile(Graphics2D g, int number, int i, int j, int tw, int th, double alpha) {

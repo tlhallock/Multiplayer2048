@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import org.hallock.tfe.client.LobbyClient;
 import org.hallock.tfe.msg.Message;
-import org.hallock.tfe.serve.Lobby.LobbyInfo;
+import org.hallock.tfe.serve.LobbyInfo;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;

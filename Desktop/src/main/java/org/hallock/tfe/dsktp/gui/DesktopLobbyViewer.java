@@ -16,9 +16,9 @@ import javax.swing.event.ListSelectionListener;
 import org.hallock.tfe.client.ClientConnection;
 import org.hallock.tfe.client.LobbyClient;
 import org.hallock.tfe.cmn.game.GameOptions;
-import org.hallock.tfe.cmn.sys.Constants;
 import org.hallock.tfe.cmn.util.Utils;
-import org.hallock.tfe.serve.Lobby.LobbyInfo;
+import org.hallock.tfe.serve.LobbyInfo;
+import org.hallock.tfe.serve.ServerSettings;
 
 public class DesktopLobbyViewer extends javax.swing.JPanel implements LobbyClient {
     
@@ -498,7 +498,7 @@ public class DesktopLobbyViewer extends javax.swing.JPanel implements LobbyClien
 			return;
 
 		String ip = jTextField1.getText();
-		int port = Constants.LOBBY_PORT;
+		int port = ServerSettings.LOBBY_PORT;
 		client.sendJoinLobbyRequest(ip, port, display.id);
     }//GEN-LAST:event_jButton6ActionPerformed
 
@@ -509,7 +509,7 @@ public class DesktopLobbyViewer extends javax.swing.JPanel implements LobbyClien
 		}
 		else
 		{
-			client.connect(jTextField1.getText(), Constants.LOBBY_PORT, jTextField2.getText());
+			client.connect(jTextField1.getText(), ServerSettings.LOBBY_PORT, jTextField2.getText());
 		}
     }//GEN-LAST:event_jButton7ActionPerformed
 

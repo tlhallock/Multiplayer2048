@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import org.hallock.tfe.serve.Lobby;
 import org.hallock.tfe.serve.PlayerConnection;
-import org.hallock.tfe.serve.PlayerInfo;
+import org.hallock.tfe.serve.WaitingPlayerInfo;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -15,7 +15,7 @@ public class UpdatePlayer extends LobbyMessage
 	int playerNumber;
 	UpdateAction action;
 	
-	public UpdatePlayer(PlayerInfo player, UpdateAction action)
+	public UpdatePlayer(WaitingPlayerInfo player, UpdateAction action)
 	{
 		playerNumber = player.lobbyNumber;
 		this.action = action;
@@ -61,7 +61,7 @@ public class UpdatePlayer extends LobbyMessage
 	@Override
 	public void perform(Lobby lobby, PlayerConnection player) throws IOException
 	{
-		lobby.performAction(action, playerNumber, player);
+		lobby.performAction(player, playerNumber, action);
 	}
 
 	@Override

@@ -9,10 +9,12 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.hallock.tfe.cmn.game.GameOptions;
 import org.hallock.tfe.cmn.game.PossiblePlayerActions;
+import org.hallock.tfe.cmn.game.evil.EvilAction;
 import org.hallock.tfe.cmn.util.Connection;
 import org.hallock.tfe.cmn.util.Json;
 import org.hallock.tfe.dsktp.gui.DesktopGameViewer;
 import org.hallock.tfe.msg.Message;
+import org.hallock.tfe.msg.g.PlayEvilAction;
 import org.hallock.tfe.msg.g.PlayerAction;
 import org.hallock.tfe.msg.gc.GameClientMessage;
 import org.hallock.tfe.msg.gv.GameViewerMessage;
@@ -26,8 +28,8 @@ import org.hallock.tfe.msg.svr.ListLobbies;
 import org.hallock.tfe.msg.svr.SCreateLobby;
 import org.hallock.tfe.msg.svr.SJoinLobby;
 import org.hallock.tfe.msg.svr.SetPlayerInfo;
-import org.hallock.tfe.serve.Lobby.LobbyInfo;
-import org.hallock.tfe.serve.PlayerInfo;
+import org.hallock.tfe.serve.GameUpdateInfo;
+import org.hallock.tfe.serve.WaitingPlayerInfo;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -80,7 +82,7 @@ public class ClientConnection
 	
 
 
-	public void launchGameGui(int playerNumber, LobbyInfo info) throws IOException
+	public void launchGameGui(int playerNumber, GameUpdateInfo info) throws IOException
 	{
 		game = DesktopGameViewer.launchGameGui(this, playerNumber, info);
 		send(new PlayerAction(PossiblePlayerActions.ShowAllTileBoards));
@@ -352,7 +354,7 @@ public class ClientConnection
 	{
 		send(new SetPlayerInfo(name));
 	}
-	public void sendUpdatePlayer(PlayerInfo player, UpdatePlayer.UpdateAction action)
+	public void sendUpdatePlayer(WaitingPlayerInfo player, UpdatePlayer.UpdateAction action)
 	{
 		send(new UpdatePlayer(player, action));
 	}
@@ -384,6 +386,10 @@ public class ClientConnection
 	public void sendJoinLobbyRequest(String ip, int port, String id)
 	{
 		send(new SJoinLobby(id));
+	}
+	public void sendEvilAction(EvilAction a, int otherPlayer)
+	{
+		send(new PlayEvilAction(a, otherPlayer));
 	}
 	
 	
@@ -447,4 +453,5 @@ public class ClientConnection
 			lock.unlock();
 		}
 	}
+
 }

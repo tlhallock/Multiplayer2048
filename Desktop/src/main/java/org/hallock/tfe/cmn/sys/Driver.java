@@ -7,6 +7,7 @@ import org.hallock.tfe.client.ClientConnection;
 import org.hallock.tfe.cmn.util.SinglePanelFrame;
 import org.hallock.tfe.dsktp.gui.DesktopLobbyViewer;
 import org.hallock.tfe.serve.GameServer;
+import org.hallock.tfe.serve.ServerSettings;
 
 
 public class Driver {
@@ -20,25 +21,14 @@ public class Driver {
 		// penalty for impossible move
 		// set speed of ai
 		
-                
-		
-		// remove any evil action you currently have
-		// possible evil moves:
-		// block one cell
-		// add in more new tiles
-		// add a higher tile
-		// remove left/right/up/down
-		// add extra tiles floating for distraction
-		// slow their moves down
-		// add a random move
-		// remove the numbers
 
+		// test that others can't change things they shouldn't be able to
 		
 		
 		// write a test around a whole bunch of things happening fast in the lobby
 		
-		ServerSocket serverSocket = new ServerSocket(Constants.LOBBY_PORT);
-		GameServer server = new GameServer(serverSocket, 3);
+		ServerSocket serverSocket = new ServerSocket(ServerSettings.LOBBY_PORT);
+		GameServer server = new GameServer(serverSocket, ServerSettings.NUM_THREADS);
 		server.start();
 
 		ClientConnection client1 = new ClientConnection();

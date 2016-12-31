@@ -5,6 +5,7 @@ import java.util.LinkedList;
 
 import org.hallock.tfe.cmn.game.TileChanges.TileChange;
 import org.hallock.tfe.cmn.util.Jsonable;
+import org.hallock.tfe.serve.PointsCounter;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -81,7 +82,18 @@ public class TileChanges extends LinkedList<TileChange> implements Jsonable
 	
 	
 	
-	
+	public void countPoints(PointsCounter counter)
+	{
+		counter.startTurn();
+		for (TileChange change : this)
+		{
+			if (change.from2Col >= 0 && change.from2Row >= 0)
+			{
+				counter.countCombine(change.toNum);
+			}
+		}
+		counter.stopTurn();
+	}
 	
 	
 	
@@ -248,5 +260,10 @@ public class TileChanges extends LinkedList<TileChange> implements Jsonable
 				(from2Row >= 0 && from2Col >= 0 && (from2Row != toRow || from2Col != toCol)) ||
 				fromNum != toNum;
 		}
+//		
+//		public boolean changedTo(int other)
+//		{
+//			return changed() && combined() && toNum == other;
+//		}
 	}
 }

@@ -2,6 +2,7 @@ package org.hallock.tfe.cmn.game;
 
 import java.awt.Point;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -10,6 +11,7 @@ import java.util.Scanner;
 
 import org.hallock.tfe.cmn.game.TileChanges.TileChange;
 import org.hallock.tfe.cmn.sys.Constants;
+import org.hallock.tfe.cmn.util.DiscreteDistribution;
 import org.hallock.tfe.cmn.util.Jsonable;
 import org.hallock.tfe.cmn.util.Utils;
 
@@ -19,7 +21,9 @@ import com.fasterxml.jackson.core.JsonToken;
 
 public class TileBoard  implements Jsonable
 {
-	int[][] tiles;
+	public int[][] tiles;
+	public static final int EMPTY = 0;
+	public static final int BLOCKED = -1;
 
 	public TileBoard(int nrows, int ncols)
 	{
@@ -114,10 +118,10 @@ public class TileBoard  implements Jsonable
 		writer.writeEndObject();
 	}
 
-	public boolean isFinished()
-	{
-		return getPossibles().isEmpty();
-	}
+//	public boolean isFinished()
+//	{
+//		return getPossibles().isEmpty();
+//	}
 
 	public void initialize(GameOptions options)
 	{
@@ -130,6 +134,10 @@ public class TileBoard  implements Jsonable
 	}
 	private void randomlyFill(GameOptions options, TileChanges changes, int num)
 	{
+		randomlyFill(num, options.newTileDistribution, changes);
+	}
+	public void randomlyFill(int num, DiscreteDistribution dist, TileChanges changes)
+	{
 		LinkedList<Point> possibles = getPossibles();
 		Collections.shuffle(possibles, Constants.random);
 
@@ -138,18 +146,30 @@ public class TileBoard  implements Jsonable
 			if (possibles.isEmpty())
 				return;
 			Point nextLoc = possibles.removeFirst();
-			int added = options.newTileDistribution.sample();
+			int added = dist.sample();
 			tiles[nextLoc.x][nextLoc.y] = added;
 			changes.add(new TileChange(added, nextLoc.x, nextLoc.y, true));
 		}
 	}
 
-	private LinkedList<Point> getPossibles()
+	public boolean addTile(int newTile, TileChanges changes)
+	{
+		LinkedList<Point> possibles = getPossibles();
+		Collections.shuffle(possibles, Constants.random);
+		if (possibles.isEmpty())
+			return false;
+		Point nextLoc = possibles.removeFirst();
+		tiles[nextLoc.x][nextLoc.y] = newTile;
+		changes.add(new TileChange(newTile, nextLoc.x, nextLoc.y, true));
+		return true;
+	}
+
+	public LinkedList<Point> getPossibles()
 	{
 		LinkedList<Point> possibles = new LinkedList<>();
 		for (int i = 0; i < tiles.length; i++)
 			for (int j = 0; j < tiles[i].length; j++)
-				if (tiles[i][j] <= 0)
+				if (tiles[i][j]  == EMPTY)
 					possibles.add(new Point(i, j));
 		return possibles;
 	}
@@ -171,7 +191,21 @@ public class TileBoard  implements Jsonable
 		return builder.toString();
 	}
 
-	
+	public void addNoChanges(TileChanges changes)
+	{
+		for (int i=0;i<tiles.length;i++)
+		{
+			for (int j=0;j<tiles[i].length;j++)
+			{
+				if (tiles[i][j] == EMPTY)
+					continue;
+				changes.add(new TileChange(
+						tiles[i][j],
+						i, j,
+						false));
+			}
+		}
+	}
 	
 	
 	
@@ -183,6 +217,10 @@ public class TileBoard  implements Jsonable
 	
 	
 
+	private static boolean canCombine(int first, int second)
+	{
+		return first == second && first != BLOCKED && first != EMPTY;
+	}
 
 	private void increment(int r, int first)
 	{
@@ -200,7 +238,7 @@ public class TileBoard  implements Jsonable
 				r, from,
 				r, to));
 		tiles[r][to] = tiles[r][from];
-		tiles[r][from] = 0;
+		tiles[r][from] = EMPTY;
 	}
 	private void pushRow(int r, int to, int from1, int from2, TileChanges changes)
 	{
@@ -212,11 +250,11 @@ public class TileBoard  implements Jsonable
 				r, from2,
 				tiles[r][from1],
 				r, to));
-		tiles[r][from2] = 0;
+		tiles[r][from2] = EMPTY;
 		if (to == from1)
 			return;
 		tiles[r][to] = tiles[r][from1];
-		tiles[r][from1] = 0;
+		tiles[r][from1] = EMPTY;
 	}
 
 	public TileChanges left(TileChanges changes)
@@ -226,17 +264,17 @@ public class TileBoard  implements Jsonable
 			int next = 0;
 			for (int first = 0; first < tiles[r].length; first++)
 			{
-				if (tiles[r][first] <= 0)
+				if (tiles[r][first] == EMPTY)
 					continue;
 				int second;
-				for (second = first + 1; second < tiles[r].length && tiles[r][second] <= 0; second++)
+				for (second = first + 1; second < tiles[r].length && tiles[r][second] == EMPTY; second++)
 					;
 				if (second >= tiles[r].length)
 				{
 					pushRow(r, next++, first, changes);
 					break;
 				}
-				if (tiles[r][second] == tiles[r][first])
+				if (canCombine(tiles[r][second], tiles[r][first]))
 				{
 					pushRow(r, next++, first, second, changes);
 					first = second;
@@ -258,17 +296,17 @@ public class TileBoard  implements Jsonable
 			int next = tiles[r].length - 1;
 			for (int first = tiles[r].length - 1; first >= 0; first--)
 			{
-				if (tiles[r][first] <= 0)
+				if (tiles[r][first] == EMPTY)
 					continue;
 				int second;
-				for (second = first - 1; second >= 0 && tiles[r][second] <= 0; second--)
+				for (second = first - 1; second >= 0 && tiles[r][second] == EMPTY; second--)
 					;
 				if (second < 0)
 				{
 					pushRow(r, next--, first, changes);
 					break;
 				}
-				if (tiles[r][second] == tiles[r][first])
+				if (canCombine(tiles[r][second], tiles[r][first]))
 				{
 					pushRow(r, next--, first, second, changes);
 					first = second;
@@ -299,7 +337,7 @@ public class TileBoard  implements Jsonable
 				from, c,
 				to, c));
 		tiles[to][c] = tiles[from][c];
-		tiles[from][c] = 0;
+		tiles[from][c] = EMPTY;
 	}
 	private void pushCol(int c, int to, int from1, int from2, TileChanges changes)
 	{
@@ -311,11 +349,11 @@ public class TileBoard  implements Jsonable
 				from2, c,
 				tiles[from1][c],
 				to, c));
-		tiles[from2][c] = 0;
+		tiles[from2][c] = EMPTY;
 		if (to == from1)
 			return;
 		tiles[to][c] = tiles[from1][c];
-		tiles[from1][c] = 0;
+		tiles[from1][c] = EMPTY;
 	}
 	
 	public TileChanges up(TileChanges changes)
@@ -325,17 +363,17 @@ public class TileBoard  implements Jsonable
 			int next = 0;
 			for (int first = 0; first < tiles.length; first++)
 			{
-				if (tiles[first][c] <= 0)
+				if (tiles[first][c] == EMPTY)
 					continue;
 				int second;
-				for (second = first + 1; second < tiles.length && tiles[second][c] <= 0; second++)
+				for (second = first + 1; second < tiles.length && tiles[second][c] == EMPTY; second++)
 					;
 				if (second >= tiles.length)
 				{
 					pushCol(c, next++, first, changes);
 					break;
 				}
-				if (tiles[second][c] == tiles[first][c])
+				if (canCombine(tiles[second][c], tiles[first][c]))
 				{
 					pushCol(c, next++, first, second, changes);
 					first = second;
@@ -357,17 +395,17 @@ public class TileBoard  implements Jsonable
 			int next = tiles.length - 1;
 			for (int first = tiles.length - 1; first >= 0; first--)
 			{
-				if (tiles[first][c] <= 0)
+				if (tiles[first][c] == EMPTY)
 					continue;
 				int second;
-				for (second = first - 1; second >= 0 && tiles[second][c] <= 0; second--)
+				for (second = first - 1; second >= 0 && tiles[second][c] == EMPTY; second--)
 					;
 				if (second < 0)
 				{
 					pushCol(c, next--, first, changes);
 					break;
 				}
-				if (tiles[second][c] == tiles[first][c])
+				if (canCombine(tiles[second][c], tiles[first][c]))
 				{
 					pushCol(c, next--, first, second, changes);
 					first = second;
@@ -386,7 +424,7 @@ public class TileBoard  implements Jsonable
 	{
 		for (int i = 0; i < tiles.length; i++)
 			for (int j = 0; j < tiles[i].length; j++)
-				tiles[i][j] = 0;
+				tiles[i][j] = EMPTY;
 	}
 
 	public void load(String filename) throws IOException
@@ -420,5 +458,161 @@ public class TileBoard  implements Jsonable
 	public int getNCols()
 	{
 		return tiles[0].length;
+	}
+
+	public boolean hasMoreMoves()
+	{
+		TileBoard board = new TileBoard(this);
+		if (board.up(new TileChanges()).changed())
+			return true;
+		if (board.down(new TileChanges()).changed())
+			return true;
+		if (board.left(new TileChanges()).changed())
+			return true;
+		if (board.right(new TileChanges()).changed())
+			return true;
+		return false;
+	}
+
+	public int getHighestTile()
+	{
+		int max = Integer.MIN_VALUE;
+		for (int i = 0; i < tiles.length; i++)
+		{
+			for (int j = 0; j < tiles[i].length; j++)
+			{
+				max = Math.max(max, tiles[i][j]);
+			}
+		}
+		return max;
+	}
+
+	public int getNumCells()
+	{
+		return tiles.length * tiles[0].length;
+	}
+	
+	@Override
+	public boolean equals(Object other)
+	{
+		if (!(other instanceof TileBoard))
+			return false;
+		TileBoard o = (TileBoard) other;
+		if (tiles.length != o.tiles.length || tiles[0].length != o.tiles[0].length)
+			return false;
+		for (int i = 0; i < tiles.length; i++)
+			for (int j = 0; j < tiles[i].length; j++)
+				if (tiles[i][j] != o.tiles[i][j])
+					return false;
+		return true;
+	}
+	@Override
+	public int hashCode()
+	{
+		StringBuilder builder = new StringBuilder();
+
+		for (int i = 0; i < tiles.length; i++)
+		{
+			for (int j = 0; j < tiles[i].length; j++)
+				builder.append(tiles[i][j]).append(j == tiles[i].length - 1 ? ';' : ',');
+		}
+
+		return builder.toString().hashCode();
+	}
+
+	public void print(PrintStream ps, int depth)
+	{
+		Utils.indent(ps, depth);
+		ps.print("tileboard:");
+		ps.print('\n');
+		for (int i = 0; i < tiles.length; i++)
+		{
+			Utils.indent(ps, depth);
+			for (int j = 0; j < tiles[i].length; j++)
+			{
+				ps.append(Utils.ensureLength(Utils.display(tiles[i][j]), ' ', Constants.DISPLAY_WIDTH)).append(' ');
+			}
+			ps.append('\n');
+		}
+	}
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	public boolean isTopHeavy()
+	{
+		int lower = 0;
+		int upper = 0;
+		for (int i = 0; i < tiles.length; i++)
+		{
+			for (int j = 0; j < tiles[0].length; j++)
+			{
+				if (i > tiles.length / 2)
+				{
+					upper += tiles[i][j];
+				}
+				else
+				{
+					lower += tiles[i][j];
+				}
+			}
+		}
+		return upper > lower;
+	}
+	public boolean isRightHeavy()
+	{
+		int left = 0;
+		int right = 0;
+		for (int i = 0; i < tiles.length; i++)
+		{
+			for (int j = 0; j < tiles[i].length; j++)
+			{
+				if (j > tiles[i].length / 2)
+				{
+					right += tiles[i][j];
+				}
+				else
+				{
+					left += tiles[i][j];
+				}
+			}
+		}
+		return right > left;
+	}
+	public void reflectVertically()
+	{
+		for (int c = 0; c < tiles[0].length; c++)
+		{
+			for (int rL = 0, rU = tiles.length-1; rL < rU; rL++, rU--)
+			{
+				int tmp = tiles[rL][c];
+				tiles[rL][c] = tiles[rU][c];
+				tiles[rU][c] = tmp;
+			}
+		}
+	}
+	public void reflectHorizontally()
+	{
+		for (int r = 0; r < tiles.length; r++)
+		{
+			for (int cL = 0, cU = tiles[r].length-1; cL < cU; cL++, cU--)
+			{
+				int tmp = tiles[r][cL];
+				tiles[r][cL] = tiles[r][cU];
+				tiles[r][cU] = tmp;
+			}
+		}
 	}
 }

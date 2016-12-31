@@ -28,6 +28,19 @@ public enum PlayerSpec
         return display;
     }
     
+    public WaitingPlayer createPlayer()
+	{
+		switch (this)
+		{
+		case Computer:
+			return new WaitingPlayer.ComputerWaitingPlayer();
+		case HumanPlayer:
+			return new WaitingPlayer.EmptyHumanPlayer();
+		default:
+			throw new RuntimeException();
+		}
+    }
+    
     public PlayerSpec getPlayerSpec(String name)
     {
         for (PlayerSpec spec : PlayerSpec.values())

@@ -3,7 +3,7 @@ package org.hallock.tfe.msg.gc;
 import java.io.IOException;
 
 import org.hallock.tfe.client.ClientConnection;
-import org.hallock.tfe.serve.Lobby.LobbyInfo;
+import org.hallock.tfe.serve.GameUpdateInfo;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -12,9 +12,9 @@ import com.fasterxml.jackson.core.JsonToken;
 public class LaunchGame extends GameClientMessage
 {
 	int playerNumber;
-	LobbyInfo info;
+	GameUpdateInfo info;
 	
-	public LaunchGame(int playerNumber, LobbyInfo info)
+	public LaunchGame(int playerNumber, GameUpdateInfo info)
 	{
 		this.playerNumber = playerNumber;
 		this.info = info;
@@ -44,8 +44,8 @@ public class LaunchGame extends GameClientMessage
 			case START_OBJECT:
 				switch (currentName)
 				{
-				case "lobby":
-					info = new LobbyInfo(parser);
+				case "info":
+					info = new GameUpdateInfo(parser);
 					break;
 				default:
 					throw new RuntimeException("Unexpected.");
@@ -63,7 +63,7 @@ public class LaunchGame extends GameClientMessage
 		generator.writeStartObject();
 		generator.writeStringField(TYPE_FIELD, TYPE);
 		generator.writeNumberField("number", playerNumber);
-		generator.writeFieldName("lobby");
+		generator.writeFieldName("info");
 		info.write(generator);
 		generator.writeEndObject();
 	}
