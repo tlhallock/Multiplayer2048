@@ -29,6 +29,11 @@ public class RunHeuristic
 		while (true)
 		{
 			count++;
+			if (size == 4)
+			{
+				h = LocationalHeuristic.createHalfSnake();
+				testHeuristic(String.valueOf(count) + "_" + size + "x" + size + "_halfsnake_" + System.currentTimeMillis(), h, size);
+			}
 			h = LocationalHeuristic.createRealV(size);
 			testHeuristic(String.valueOf(count) + "_" + size + "x" + size + "_real_V_" + System.currentTimeMillis(), h, size);
 			h = LocationalHeuristic.createV(size);
@@ -41,12 +46,11 @@ public class RunHeuristic
 			testHeuristic(String.valueOf(count) + "_" + size + "x" + size + "_snake_" + System.currentTimeMillis(), h, size);
 			h = new LocationalHeuristic(size, size);
 			testHeuristic(String.valueOf(count) + "_" + size + "x" + size + "_random_" + System.currentTimeMillis(), h, size);
-			if (size != 4)
-				break;
-			h = LocationalHeuristic.createSunnys();
-			testHeuristic(String.valueOf(count) + size + "x" + size + "_snake_" + System.currentTimeMillis(), h, size);
-			h = LocationalHeuristic.createHalfSnake();
-			testHeuristic(String.valueOf(count) + "_" + size + "x" + size + "_halfsnake_" + System.currentTimeMillis(), h, size);
+			if (size == 4)
+			{
+				h = LocationalHeuristic.createSunnys();
+				testHeuristic(String.valueOf(count) + size + "x" + size + "_snake_" + System.currentTimeMillis(), h, size);
+			}
 		}
 	}
 	
@@ -62,7 +66,7 @@ public class RunHeuristic
 
 		Search search = new Search(h);
 		DesktopTileBoardViewer viewer = new DesktopTileBoardViewer("Computer", 0);
-		SinglePanelFrame showPanel = SinglePanelFrame.showPanel(viewer, new Rectangle(50, 50, 750, 750), "Computer Game");
+		SinglePanelFrame showPanel = SinglePanelFrame.showPanel(viewer, new Rectangle(50, 50, 750, 750), "name");
 		viewer.start();
 		System.out.println(board);
 		ComputerGame game = new ComputerGame(options, viewer, board, search, name);
