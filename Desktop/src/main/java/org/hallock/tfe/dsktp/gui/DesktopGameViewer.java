@@ -27,13 +27,15 @@ import org.hallock.tfe.client.ClientKeyListener;
 import org.hallock.tfe.client.GameViewer;
 import org.hallock.tfe.cmn.game.evil.EvilAction;
 import org.hallock.tfe.cmn.game.evil.EvilAction.EvilActionType;
+import org.hallock.tfe.cmn.sys.Animator;
 import org.hallock.tfe.cmn.util.Utils;
 import org.hallock.tfe.serve.GamePlayerInfo;
-import org.hallock.tfe.serve.GameUpdateInfo;
+import org.hallock.tfe.sys.GameUpdateInfo;
 
 public class DesktopGameViewer implements GameViewer, WindowListener, ComponentListener, MouseListener
 {
 	private static final int SCROLL_BAR_BUFFER = 30;
+	private static final long ANIMATION_WAIT = 50;
 	
 	int playerNumber;
 	sdflkjsdf others = new sdflkjsdf();
@@ -48,8 +50,8 @@ public class DesktopGameViewer implements GameViewer, WindowListener, ComponentL
 	
 	LinkedList<EvilAction> actions = new LinkedList<>();
 	EvilAction currentActionDragged;
-	
-	
+
+	Animator animator = new Animator(ANIMATION_WAIT);
 	
 	@Override
 	public void updatePlayer(GamePlayerInfo info)
@@ -125,7 +127,10 @@ public class DesktopGameViewer implements GameViewer, WindowListener, ComponentL
 			actions.remove(a);
 			updateUi();
 		}
-		sendAction(a, viewer.getIndex());
+		int playerIndex = viewer.getPlayerIndex();
+		if (playerIndex < 0)
+			return;
+		sendAction(a, playerIndex);
 	}
 
 	private DesktopTileBoardViewer getViewer(MouseEvent arg0)
@@ -196,22 +201,17 @@ public class DesktopGameViewer implements GameViewer, WindowListener, ComponentL
 	
 	void add(int player, GamePlayerInfo info)
 	{
-		DesktopTileBoardViewer desktopTileBoardViewer = new DesktopTileBoardViewer(info.name, info.playerNumber);
+		DesktopTileBoardViewer desktopTileBoardViewer = new DesktopTileBoardViewer(animator, info.name);
 		mapping.put(player, desktopTileBoardViewer);
 		players.put(player, info);
 		viewers.add(desktopTileBoardViewer);
-		desktopTileBoardViewer.start();
 	}
 
 	@Override
 	public void windowClosed(WindowEvent e)
 	{
-		myself.stop();
-		for (DesktopTileBoardViewer v : mapping.values())
-		{
-			v.stop();
-		}
-		client.died(this);
+		animator.quit();
+		client.gameStopped();
 	}
 
 	@Override
@@ -237,12 +237,11 @@ public class DesktopGameViewer implements GameViewer, WindowListener, ComponentL
 		updateUi();
 	}
 
-	public static GameViewer launchGameGui(ClientConnection connection, int playerNumber, GameUpdateInfo info) throws IOException
+	public static DesktopGameViewer launchGameGui(ClientConnection connection, int playerNumber, GameUpdateInfo info) throws IOException
 	{
 		DesktopGameViewer viewer = new DesktopGameViewer();
 		viewer.client = connection;
-		viewer.myself = new DesktopTileBoardViewer(null, playerNumber);
-		viewer.myself.start();
+		viewer.myself = new DesktopTileBoardViewer(viewer.animator, null);
 		viewer.others.addComponentListener(viewer.others);
 		viewer.others.updateUi();
 		
@@ -289,6 +288,8 @@ public class DesktopGameViewer implements GameViewer, WindowListener, ComponentL
 		viewer.myself.requestFocus();
 
 		viewer.frame.setVisible(true);
+		
+		new Thread(viewer.animator).start();
 		
 		return viewer;
 	}

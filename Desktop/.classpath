@@ -32,5 +32,8 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry combineaccessrules="false" kind="src" path="/tfe.cmn"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/tfe.json"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/tfe.client"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

@@ -1,5 +1,7 @@
 package org.hallock.tfe.cmn.sys;
 
+import java.awt.Component;
+import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -12,28 +14,36 @@ public class Animator implements Runnable
 	final Lock lock = new ReentrantLock();
 	final Condition condition = lock.newCondition();
 	
-	boolean running;
 	boolean quit;
 	
 	long waitPeriod;
 
-	Runnable runnable;
+	LinkedList<Component> runnables = new LinkedList<>();
 	
-	public Animator(long waitPeriod, Runnable runnable)
+	public Animator(long waitPeriod)
 	{
 		this.waitPeriod = waitPeriod;
-		this.runnable = runnable;
 	}
 	
-	public void setRunning(boolean val)
+	public void startRunning(Component runnable)
 	{
-		if (running == val)
-			return;
-		
-		running = val;
 		try
 		{
 			lock.lock();
+			runnables.add(runnable);
+			condition.signalAll();
+		}
+		finally
+		{
+			lock.unlock();
+		}
+	}
+	public void stopRunning(Component runnable)
+	{
+		try
+		{
+			lock.lock();
+			runnables.remove(runnable);
 			condition.signalAll();
 		}
 		finally
@@ -42,13 +52,11 @@ public class Animator implements Runnable
 		}
 	}
 
-	private void runit()
+	private void runit(Component run)
 	{
-		if (runnable == null)
-			return;
 		try
 		{
-			runnable.run();
+			run.repaint();
 		}
 		catch (Throwable t)
 		{
@@ -73,14 +81,16 @@ public class Animator implements Runnable
 	@Override
 	public void run()
 	{
+		Thread.currentThread().setName("Animator");
+		
 		boolean quit;
-		boolean running;
+		LinkedList<Component> running;
 
 		try
 		{
 			lock.lock();
 			quit = this.quit;
-			running = this.running;
+			running = (LinkedList<Component>) runnables.clone();
 		}
 		finally
 		{
@@ -88,29 +98,27 @@ public class Animator implements Runnable
 		}
 		
 		
-		while (true)
+		while (!quit)
 		{
 			long waitTime = NOT_RUNNING_MS;
-			
-			if (running)
-			{
-				long now = System.currentTimeMillis();
-				runit();
-				waitTime = Math.max(1, now + waitPeriod - System.currentTimeMillis());
-			}
+
+			long now = System.currentTimeMillis();
+			for (Component runnable : running)
+				runit(runnable);
+			waitTime = Math.max(1, now + waitPeriod - System.currentTimeMillis());
 				
 			try
 			{
 				lock.lock();
 				quit = this.quit;
-				running = this.running;
+				running = (LinkedList<Component>) runnables.clone();
 				if (quit)
 					break;
-				if (!running)
+				if (running.isEmpty())
 					waitTime = NOT_RUNNING_MS;
 				condition.await(waitTime, TimeUnit.MILLISECONDS);
 				quit = this.quit;
-				running = this.running;
+				running = (LinkedList<Component>) runnables.clone();
 			}
 			catch (InterruptedException e)
 			{

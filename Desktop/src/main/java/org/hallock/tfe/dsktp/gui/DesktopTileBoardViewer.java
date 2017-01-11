@@ -14,49 +14,43 @@ import org.hallock.tfe.cmn.util.Utils;
 import org.hallock.tfe.serve.GamePlayerInfo;
 
 public class DesktopTileBoardViewer extends JPanel {
+
 	private static final long ANIMATION_TIME = 500;
 	
-	int idx;
 	TileBoard state;
 	TileChanges changes;
 	int dividerSize = 5;
 	String name;
 	
-	// Should not make an animator for each one
-	Animator animator = new Animator(100, new Runnable()
-	{
-		@Override
-		public void run()
-		{
-			repaint();
-		}
-	});
+	Animator animator;
 	int currentTurn;
 	private long startAnimating;
 	private String pointsString;
+	private int playerIndex = -1;
 	
-	public DesktopTileBoardViewer(String name, int idx)
+	public DesktopTileBoardViewer(Animator animator, String name)
 	{
+		this.animator = animator;
 		this.name = name;
-		this.idx = idx;
-	}
-	
-	public int getIndex()
-	{
-		return idx;
 	}
 
 	public void setTileBoard(GamePlayerInfo info)
 	{
-		if (currentTurn != info.turnId)
+		if (currentTurn != info.drawId)
 		{
 			startAnimating = System.currentTimeMillis();
-			currentTurn = info.turnId;
+			currentTurn = info.drawId;
 		}
 		this.state = new TileBoard(info.board);
 		this.changes = info.changes;
 		this.pointsString = info.points.toPlainString();
+		this.playerIndex = info.playerNumber;
 		repaint();
+	}
+
+	public int getPlayerIndex()
+	{
+		return playerIndex;
 	}
 
 	@Override
@@ -82,7 +76,7 @@ public class DesktopTileBoardViewer extends JPanel {
 		long now = System.currentTimeMillis();
 		if (now > startAnimating + ANIMATION_TIME || changes == null)
 		{
-			animator.setRunning(false);
+			animator.stopRunning(this);
 			for (int r = 0; r < nr; r++) {
 				for (int c = 0; c < nc; c++) {
 					drawTile(g, state.get(r, c),
@@ -102,7 +96,7 @@ public class DesktopTileBoardViewer extends JPanel {
 				System.out.println(now - startAnimating);
 			}
 			
-			animator.setRunning(true);
+			animator.startRunning(this);
 
 			g.setColor(Color.white);
 			for (int r = 0; r < nr; r++) {
@@ -212,16 +206,6 @@ public class DesktopTileBoardViewer extends JPanel {
 	
 	private static int scale(int i, double d)
 	{
-		return (int) (255 + d * (i - 255));
-	}
-
-	public void stop()
-	{
-		animator.quit();
-	}
-
-	public void start()
-	{
-		new Thread(animator).start();
+		return Math.max(0, Math.min(255, (int) (255 + d * (i - 255))));
 	}
 }

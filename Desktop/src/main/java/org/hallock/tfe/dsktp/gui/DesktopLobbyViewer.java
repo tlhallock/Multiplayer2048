@@ -5,7 +5,7 @@
  */
 package org.hallock.tfe.dsktp.gui;
 
-import java.util.LinkedList;
+import java.util.Collection;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JFrame;
@@ -18,7 +18,7 @@ import org.hallock.tfe.client.LobbyClient;
 import org.hallock.tfe.cmn.game.GameOptions;
 import org.hallock.tfe.cmn.util.Utils;
 import org.hallock.tfe.serve.LobbyInfo;
-import org.hallock.tfe.serve.ServerSettings;
+import org.hallock.tfe.sys.GameConstants;
 
 public class DesktopLobbyViewer extends javax.swing.JPanel implements LobbyClient {
     
@@ -61,6 +61,12 @@ public class DesktopLobbyViewer extends javax.swing.JPanel implements LobbyClien
 	private ListModel<LobbyDisplay> getListModel()
 	{
 		return lobbyListModel;
+	}
+	
+	@Override
+	public void view()
+	{
+		setVisible(true);
 	}
 
     /**
@@ -498,7 +504,7 @@ public class DesktopLobbyViewer extends javax.swing.JPanel implements LobbyClien
 			return;
 
 		String ip = jTextField1.getText();
-		int port = ServerSettings.LOBBY_PORT;
+		int port = GameConstants.LOBBY_PORT;
 		client.sendJoinLobbyRequest(ip, port, display.id);
     }//GEN-LAST:event_jButton6ActionPerformed
 
@@ -509,7 +515,7 @@ public class DesktopLobbyViewer extends javax.swing.JPanel implements LobbyClien
 		}
 		else
 		{
-			client.connect(jTextField1.getText(), ServerSettings.LOBBY_PORT, jTextField2.getText());
+			client.connect(jTextField1.getText(), GameConstants.LOBBY_PORT, jTextField2.getText());
 		}
     }//GEN-LAST:event_jButton7ActionPerformed
 
@@ -560,7 +566,6 @@ public class DesktopLobbyViewer extends javax.swing.JPanel implements LobbyClien
 
 	private void optionsChanged()
 	{
-		System.out.println("Would update options...");
 		jButton5.setEnabled(true);
 	}
 
@@ -678,7 +683,7 @@ public class DesktopLobbyViewer extends javax.swing.JPanel implements LobbyClien
 	
 	
 	@Override
-	public void setLobbies(LinkedList<LobbyInfo> lobbies)
+	public void setLobbies(Collection<LobbyInfo> lobbies)
 	{
 		lobbyListModel.removeAllElements();
 		for (LobbyInfo info : lobbies)

@@ -1,0 +1,16 @@
+{
+	"number child" : 1,
+	"object child" : 
+	{
+		"inner array" : [0, 1, 2, 3, 4],
+		"has boolean" : true,
+		"null child" : null
+	},
+	"array child" :
+	[
+		{ "type" : "object 1"},
+		{ "type" : "object 2"},
+		{ "type" : "object 3"},
+		true
+	]
+}
